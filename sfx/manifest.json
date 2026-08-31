@@ -1,0 +1,17 @@
+[
+  { "name": "eat-glint", "seconds": 1, "prompt": "A small bright glass chime ping, like a fingertip tapping a thin crystal goblet, short shimmer decay.", "event": "eat" },
+  { "name": "eat-pluck", "seconds": 1, "prompt": "A soft plucked rubber band twang with a quick muted pop, playful and dry, very short.", "event": "eat" },
+  { "name": "eat-morsel", "seconds": 1, "prompt": "A crisp bite into a fresh apple, single crunchy munch with a juicy snap, close and dry.", "event": "eat" },
+  { "name": "eat-bubble", "seconds": 1, "prompt": "A single round water bubble popping at the surface, gentle bloop with a tiny splash tail.", "event": "eat" },
+  { "name": "eat-chime", "seconds": 1, "prompt": "A tiny brass bell struck once with a wooden stick, warm metallic ting fading quickly.", "event": "eat" },
+  { "name": "eat-spark", "seconds": 1, "prompt": "A quick electric spark crackle, like static discharge from a doorknob, brief and snappy.", "event": "eat" },
+  { "name": "boost-whoosh", "seconds": 2, "prompt": "A fast air whoosh of a swung wooden staff passing close by the ear, rising then falling.", "event": "boost-start" },
+  { "name": "boost-surge", "seconds": 2, "prompt": "A deep breath of wind swelling through a narrow canyon, low rushing surge building up.", "event": "boost-start" },
+  { "name": "boost-ignite", "seconds": 1, "prompt": "A gas stove burner igniting with a soft whomp of flame catching, short and warm.", "event": "boost-start" },
+  { "name": "boost-rush", "seconds": 2, "prompt": "A sled pushed off down an icy slope, scraping rush of ice and air accelerating away.", "event": "boost-start" },
+  { "name": "boost-launch", "seconds": 1, "prompt": "A taut bowstring released, deep thrum with a quick arrow whistle fading upward.", "event": "boost-start" },
+  { "name": "death-impact", "seconds": 2, "prompt": "A heavy clay pot striking stone floor and thudding without breaking, dull low impact.", "event": "death" },
+  { "name": "death-shatter", "seconds": 2, "prompt": "A glass bottle shattering on concrete, sharp initial crash with scattering shards settling.", "event": "death" },
+  { "name": "death-crash", "seconds": 3, "prompt": "A stack of hollow metal cans toppling over onto a hard floor, clattering cascade dying down.", "event": "death" },
+  { "name": "death-fade", "seconds": 3, "prompt": "A deep struck gong decaying slowly, dark metallic hum sinking into silence.", "event": "death" }
+]

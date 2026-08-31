@@ -1,0 +1,10 @@
+{
+  "name": "serpent-ring",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "test": "node tests/run-tests.js",
+    "start": "node server.js"
+  }
+}

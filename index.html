@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Serpent Ring</title>
+<link rel="stylesheet" href="./css/style.css" />
+<script type="module" src="./js/ui.js"></script>
+</head>
+<body class="sr-root">
+<noscript><p class="sr-noscript">Serpent Ring requires JavaScript and WebGL.</p></noscript>
+
+<div id="sr-app" class="sr-shell">
+  <header class="sr-topbar sr-hideable" aria-label="Game title bar">
+    <h1 class="sr-title">Serpent Ring</h1>
+    <div class="sr-clock" data-sr-live="clock"></div>
+    <button type="button" class="sr-btn sr-iconbtn" id="sr-help-open" aria-label="Help and rules">?</button>
+  </header>
+
+  <main class="sr-main" id="sr-main">
+    <!-- Title / home -->
+    <section class="sr-screen" data-sr-screen="title" hidden>
+      <div class="sr-hero">
+        <h2>Serpent Ring</h2>
+        <p class="sr-tagline">Steer, gather light, and outlast the ring.</p>
+      </div>
+      <nav class="sr-menu" aria-label="Main menu">
+        <button type="button" class="sr-btn sr-primary" id="btn-play">Play</button>
+        <button type="button" class="sr-btn" data-sr-nav="daily">Daily Challenge</button>
+        <button type="button" class="sr-btn" data-sr-nav="journey">Journey</button>
+        <button type="button" class="sr-btn" data-sr-nav="learn">Learn</button>
+        <button type="button" class="sr-btn" data-sr-nav="challenge">Challenge</button>
+      </nav>
+    </section>
+
+    <!-- Mode select -->
+    <section class="sr-screen" data-sr-screen="modes" hidden>
+      <h2 class="sr-h2">Choose a mode</h2>
+      <div id="mode-list" class="sr-mode-grid"></div>
+      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="title">&larr; Back to title</button>
+    </section>
+
+    <!-- Practice difficulty -->
+    <section class="sr-screen" data-sr-screen="practice-difficulty" hidden>
+      <h2 class="sr-h2">Practice — choose a difficulty</h2>
+      <div id="diff-list"></div>
+      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="modes">&larr; Back to modes</button>
+    </section>
+
+    <!-- Daily -->
+    <section class="sr-screen" data-sr-screen="daily-setup" hidden>
+      <h2 class="sr-h2">Daily Challenge</h2>
+      <p id="daily-brief"></p>
+      <div class="sr-rowbtns">
+        <button type="button" class="sr-btn sr-primary" data-sr-nav="play-daily">Play the daily challenge</button>
+        <button type="button" class="sr-btn" data-sr-nav="daily-rules">Rules and details</button>
+      </div>
+    </section>
+
+    <!-- Journey -->
+    <section class="sr-screen" data-sr-screen="journey-setup" hidden>
+      <h2 class="sr-h2">Journey — 40 stages in five chapters</h2>
+      <p id="journey-summary"></p>
+      <div id="chapter-list"></div>
+    </section>
+
+    <!-- Learn -->
+    <section class="sr-screen" data-sr-screen="learn-setup" hidden>
+      <h2 class="sr-h2">Learn — five interactive lessons</h2>
+      <p id="learn-summary"></p>
+      <div id="lesson-list"></div>
+    </section>
+
+    <!-- Challenge -->
+    <section class="sr-screen" data-sr-screen="challenge-setup" hidden>
+      <h2 class="sr-h2">Challenge — constrained goals</h2>
+      <p id="challenge-summary"></p>
+      <div id="chal-list"></div>
+    </section>
+
+    <!-- Play -->
+    <section class="sr-screen sr-play" data-sr-screen="play" hidden>
+      <canvas id="game-canvas" aria-label="Serpent Ring playfield"></canvas>
+      <div class="sr-hud">
+        <div class="sr-objective" data-sr-live="objective"></div>
+        <div class="sr-progress" data-sr-live="progress"></div>
+        <button type="button" class="sr-btn sr-iconbtn" id="btn-pause" aria-label="Pause game">&#9208;</button>
+      </div>
+    </section>
+
+    <!-- Pause -->
+    <section class="sr-screen sr-overlay" data-sr-screen="pause" hidden>
+      <h2 class="sr-h2">Paused</h2>
+      <nav aria-label="Pause menu">
+        <button type="button" class="sr-btn sr-primary" id="btn-resume">Resume</button>
+        <div class="sr-rowbtns">
+          <label class="sr-opt"><span>Music volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="music" /></label>
+          <label class="sr-opt"><span>Sounds volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="sfx" /></label>
+        </div>
+        <button type="button" class="sr-btn sr-backbtn" id="btn-leave">Leave to title</button>
+      </nav>
+    </section>
+
+    <!-- Results -->
+    <section class="sr-screen sr-overlay" data-sr-screen="results" hidden>
+      <h2 class="sr-h2" id="res-headline"></h2>
+      <div id="score-breakdown"></div>
+      <p id="res-note"></p>
+      <button type="button" class="sr-btn sr-primary" data-sr-nav="retry">Play again</button>
+    </section>
+
+    <!-- Help -->
+    <section class="sr-screen sr-overlay" data-sr-screen="help" hidden>
+      <h2 class="sr-h2">Help — rules and controls</h2>
+      <div id="help-body"></div>
+      <button type="button" class="sr-btn sr-backbtn" id="btn-help-close">Close help</button>
+    </section>
+
+    <!-- Error -->
+    <section class="sr-screen sr-overlay" data-sr-screen="error" hidden>
+      <h2 class="sr-h2">Something went wrong</h2>
+      <p id="err-msg"></p>
+      <button type="button" class="sr-btn sr-backbtn" id="btn-err-close">Close error</button>
+    </section>
+
+    <!-- Loading -->
+    <div class="sr-loading" data-sr-live="loading" hidden></div>
+  </main>
+</div>
+</body>
+</html>
