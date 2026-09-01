@@ -30,3 +30,21 @@ button.sr-iconbtn { padding: .5em .9em; }
 
 #help-body, #score-breakdown { white-space: pre-wrap; max-width: 70ch; margin-left: auto; margin-right: auto; }
 .sr-loading { text-align: center; padding-top: 2em; color: var(--sr-muted); font-size: .9rem; }
+
+/* screens and populated lists (main.js) */
+.sr-screen { max-width: 760px; margin: 0 auto; padding: 1rem; }
+.sr-hero, .sr-menu { text-align: center; }
+.sr-menu .sr-btn { display: block; width: min(90vw, 320px); margin: .4em auto; }
+.sr-mode-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.sr-mode-card { text-align: left; padding: 1em; }
+.sr-mode-card p { margin: .3em 0 0; color: var(--sr-muted); font-size: .9rem; }
+.sr-blockbtn { display: block; width: 100%; text-align: left; }
+.sr-h3 { color: var(--sr-accent); margin: 1rem 0 .3rem; }
+.sr-rowbtns { display: flex; gap: .6rem; flex-wrap: wrap; }
+.sr-opt { display: block; color: var(--sr-muted); margin: .4rem 0; }
+.sr-score { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; max-width: 320px; margin: 0 auto; }
+.sr-score dd { margin: 0; text-align: right; }
+#game-canvas { aspect-ratio: 1 / 1; max-height: 68vh; }
+@media (max-width: 700px) {
+  .sr-screen { padding: .6rem; }
+}

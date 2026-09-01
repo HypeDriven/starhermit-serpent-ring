@@ -19,7 +19,8 @@ export function initUI() {
     if (!el || !el.id && !el.hasAttribute('data-sr-nav')) return;
     let nav = null;
     if (el.id === 'btn-play') nav = 'modes';
-    else if (el.id === 'help-open' ) {}
+    else if (el.id === 'sr-help-open') nav = 'help';
+    else if (el.id === 'btn-pause') nav = 'pause';
     const id = el.id;
     if (id === 'btn-help-close') { showScreen('title'); }
     else if (id === 'btn-leave') { showScreen('title'); }
@@ -36,6 +37,7 @@ export function initUI() {
       case 'learn': screen = 'learn-setup'; break;
       case 'challenge': screen = 'challenge-setup'; break;
       case 'play-daily': screen = 'play'; break;
+      case 'retry': screen = 'play'; break;
       default: screen = target; break;
     }
     if (screen) showScreen(screen);
