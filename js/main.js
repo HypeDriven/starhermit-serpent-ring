@@ -284,5 +284,6 @@ setInterval(() => {
 
 populate();
 initUI();
+bindPointer();
 showScreen('title');
 requestAnimationFrame(frame);
