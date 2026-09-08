@@ -42,19 +42,33 @@ export function render(canvas, state) {
     ctx.fill();
   }
 
-  // Serpents: head plus trail.
+  // Serpents: head plus trail. Ownership must stay legible, so the player's
+  // serpent is the pale one with a white head and every rival keeps its own
+  // hue from the rules state.
   for (const s of state.serpents) {
     if (!s.alive && !s.boostOn) continue;
+    const mine = !s.isBot;
+    const trailColor = mine ? '#e8f4ff' : `hsl(${s.hue}, 70%, 62%)`;
+    const headColor = mine ? '#ffffff' : `hsl(${s.hue}, 80%, 72%)`;
     const tr = s.trail;
     for (let i = tr.length - 1; i >= 0; i -= Math.max(1, Math.floor(tr.length / 60))) {
       ctx.beginPath();
       ctx.arc(cx + tr[i].x * scale, cy - tr[i].y * scale, s.boostOn ? 4 : 3, 0, Math.PI * 2);
-      ctx.fillStyle = '#e8f4ff';
+      ctx.fillStyle = trailColor;
       ctx.fill();
     }
+    const hx = cx + s.x * scale, hy = cy - s.y * scale;
+    if (mine) {
+      // Ring around the player's head: readable even with effects disabled.
+      ctx.beginPath();
+      ctx.arc(hx, hy, s.boostOn ? 10 : 9, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(232,244,255,0.55)';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
     ctx.beginPath();
-    ctx.arc(cx + s.x * scale, cy - s.y * scale, s.boostOn ? 6 : 5, 0, Math.PI * 2);
-    ctx.fillStyle = '#ffffff';
+    ctx.arc(hx, hy, s.boostOn ? 6 : 5, 0, Math.PI * 2);
+    ctx.fillStyle = headColor;
     ctx.fill();
   }
 }

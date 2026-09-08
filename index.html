@@ -83,8 +83,8 @@
     <section class="sr-screen sr-play" data-sr-screen="play" hidden>
       <canvas id="game-canvas" aria-label="Serpent Ring playfield"></canvas>
       <div class="sr-hud">
-        <div class="sr-objective" data-sr-live="objective"></div>
-        <div class="sr-progress" data-sr-live="progress"></div>
+        <div class="sr-objective" data-sr-live="objective" role="status" aria-live="polite"></div>
+        <div class="sr-progress" data-sr-live="progress" aria-live="off"></div>
         <button type="button" class="sr-btn sr-iconbtn" id="btn-pause" aria-label="Pause game">&#9208;</button>
       </div>
     </section>
@@ -96,7 +96,7 @@
         <button type="button" class="sr-btn sr-primary" id="btn-resume">Resume</button>
         <div class="sr-rowbtns">
           <label class="sr-opt"><span>Music volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="music" /></label>
-          <label class="sr-opt"><span>Sounds volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="sfx" /></label>
+          <label class="sr-opt"><span>Sounds volume</span><input type="range" min="0" max="100" step="5" value="100" data-sr-audio="sfx" /></label>
         </div>
         <button type="button" class="sr-btn sr-backbtn" id="btn-leave">Leave to title</button>
       </nav>

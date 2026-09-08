@@ -7,9 +7,13 @@ import { initUI } from './ui.js';
 import * as rules from './rules.js';
 import * as content from './content.js';
 import { render } from './render.js';
+import { playEvent } from './audio.js';
 
 const $ = (sel) => document.querySelector(sel);
 const TICK_MS = 1000 / rules.TICK_RATE;
+
+/** Display length: content and goals speak in metres of 10 trail ticks. */
+const meters = (trailTicks) => (trailTicks / 10).toFixed(1);
 
 function showScreen(name) {
   const main = $('#sr-main');
@@ -33,7 +37,7 @@ function btn(label, className, onClick, nav) {
  *  Screen population
  * ------------------------------------------------------------------ */
 
-const dailyItem = content.dailyContent();
+let dailyItem = content.dailyContent();
 
 function populate() {
   const modeList = $('#mode-list');
@@ -104,6 +108,7 @@ function populate() {
 let cur = null; // { item, state, last, acc, steerDir, desiredHeading, boostWanted, over }
 
 function startLevel(item) {
+  paused = false;
   const state = rules.createGame({
     seed: item.seed,
     ruleset: item.ruleset,
@@ -116,7 +121,12 @@ function startLevel(item) {
     last: performance.now(), acc: 0,
     steerDir: 0, desiredHeading: me ? me.targetHeading : 0,
     boostWanted: false, over: false,
+    lesson: null,
   };
+  if (item.kind === 'learn' && Array.isArray(item.steps) && item.steps.length) {
+    cur.lesson = { index: 0, done: false };
+    resetLessonStep(me);
+  }
   showScreen('play');
   resizeCanvas();
   updateHud();
@@ -134,9 +144,111 @@ function pushSteer() {
 function pushBoost() {
   const me = human();
   if (!me) return;
-  if (cur.boostWanted !== me.boostOn) {
-    rules.applyCommand(cur.state, rules.makeCommand(me.id, 'boost', { on: cur.boostWanted }));
+  if (cur.boostWanted === me.boostOn) return;
+  // Only send a boost request the rules will accept: holding the key with too
+  // little mass would otherwise queue a rejected command every single tick and
+  // inflate the invalid-action tie-breaker.
+  if (cur.boostWanted && !rules.getLegalActions(cur.state, me.id).boost.valid) return;
+  rules.applyCommand(cur.state, rules.makeCommand(me.id, 'boost', { on: cur.boostWanted }));
+}
+
+/**
+ * Acknowledge simulation events with sound. Eating and boosting are only
+ * sonified for the player's own serpent; deaths anywhere in the ring are
+ * audible because they change the field. At most one clip per kind per tick.
+ */
+function sonify(events) {
+  if (!events || !events.length) return;
+  const me = human();
+  const played = new Set();
+  for (const e of events) {
+    let kind = null;
+    if ((e.type === 'eat' || e.type === 'boost-start') && me && e.serpent === me.id) kind = e.type;
+    else if (e.type === 'death') kind = 'death';
+    if (!kind || played.has(kind)) continue;
+    played.add(kind);
+    playEvent(kind);
   }
+}
+
+/* ------------------------------------------------------------------ *
+ *  Learn mode: the authored lesson steps drive the HUD and completion.
+ *  Every check is evaluated from authoritative engine state only.
+ * ------------------------------------------------------------------ */
+
+function resetLessonStep(me) {
+  const L = cur.lesson;
+  if (!L || !me) return;
+  L.base = {
+    tick: cur.state.tick,
+    motes: me.score.motes,
+    boostTicks: me.boostTicksUsed,
+    eliminations: me.score.eliminations,
+  };
+  L.turned = 0;          // total heading swept, in heading units
+  L.angleSum = 0;        // signed angle swept about the arena centre
+  L.blooms = 0;          // bloom motes eaten during this step
+  L.near = 0;            // ticks spent close to a rival body
+  L.prevHeading = me.heading;
+  L.prevAngle = Math.atan2(me.y, me.x);
+}
+
+function lessonAccumulate(events, me) {
+  const L = cur.lesson;
+  let d = (me.heading - L.prevHeading) % rules.HEADING_MAX;
+  if (d > rules.HEADING_MAX / 2) d -= rules.HEADING_MAX;
+  if (d < -rules.HEADING_MAX / 2) d += rules.HEADING_MAX;
+  L.turned += Math.abs(d);
+  L.prevHeading = me.heading;
+
+  const ang = Math.atan2(me.y, me.x);
+  let da = ang - L.prevAngle;
+  if (da > Math.PI) da -= Math.PI * 2;
+  if (da < -Math.PI) da += Math.PI * 2;
+  L.angleSum += da;
+  L.prevAngle = ang;
+
+  for (const e of events) {
+    if (e.type === 'eat' && e.serpent === me.id && e.bloom) L.blooms++;
+  }
+
+  for (const o of cur.state.serpents) {
+    if (o === me || !o.alive) continue;
+    if (o.trail.some((p) => (p.x - me.x) ** 2 + (p.y - me.y) ** 2 < 1100 * 1100)) { L.near++; break; }
+  }
+}
+
+function lessonStepMet(check, me) {
+  const L = cur.lesson;
+  const elapsed = cur.state.tick - L.base.tick;
+  switch (check.type) {
+    case 'heading-turned': return L.turned >= check.value;
+    case 'laps': return Math.abs(L.angleSum) >= check.value * Math.PI * 2;
+    case 'ticks': return elapsed >= check.value;
+    case 'motes':
+    case 'motes-after': return me.score.motes - L.base.motes >= check.value;
+    case 'length': return me.trail.length >= check.value;
+    case 'length-alive': return me.alive && me.trail.length >= check.value;
+    case 'bloom': return L.blooms >= check.value;
+    case 'boost-ticks': return me.boostTicksUsed - L.base.boostTicks >= check.value;
+    case 'proximity': return L.near >= check.value;
+    case 'eliminate-or-survive':
+      return me.score.eliminations > L.base.eliminations || elapsed >= check.value;
+    default: return false;
+  }
+}
+
+function lessonTick(events) {
+  const L = cur.lesson;
+  if (!L || L.done) return;
+  const me = human();
+  if (!me || !me.alive) return;
+  lessonAccumulate(events, me);
+  const step = cur.item.steps[L.index];
+  if (!step || !lessonStepMet(step.check, me)) return;
+  L.index++;
+  if (L.index >= cur.item.steps.length) L.done = true;
+  else resetLessonStep(me);
 }
 
 function updateHud() {
@@ -146,9 +258,19 @@ function updateHud() {
   const progEl = $('[data-sr-live="progress"]');
   const st = me && rules.getGoalStatus(cur.state, me.id);
   objEl.textContent = cur.item.name + (cur.item.brief ? ' — ' + cur.item.brief : '');
+  const L = cur.lesson;
+  if (L && me) {
+    const steps = cur.item.steps;
+    progEl.textContent = !me.alive
+      ? 'Down — press Play again to retry the lesson.'
+      : L.done
+        ? 'Lesson complete.'
+        : `Step ${L.index + 1} / ${steps.length} — ${steps[L.index].text}`;
+    return;
+  }
   if (st && st.goal) {
     progEl.textContent = me.alive
-      ? `Goal ${Math.min(st.current, st.target)} / ${st.target} · length ${(rules.trailLength(cur.state.ruleset, me) / 100).toFixed(1)} m`
+      ? `Goal ${Math.min(st.current, st.target)} / ${st.target} · length ${meters(rules.trailLength(cur.state.ruleset, me))} m`
       : 'Down — watch the rim, island and thorns.';
   } else {
     progEl.textContent = me && me.alive ? 'Glide on.' : 'Down.';
@@ -156,24 +278,30 @@ function updateHud() {
 }
 
 function finishIfTerminal() {
-  if (!cur || cur.over || cur.state.phase !== 'terminal') return;
+  if (!cur || cur.over) return;
+  const lessonDone = !!(cur.lesson && cur.lesson.done);
+  if (cur.state.phase !== 'terminal' && !lessonDone) return;
   cur.over = true;
   const me = human();
   const res = rules.makeResult(cur.state, me, 'local');
-  $('#res-headline').textContent = res.goalMet ? 'Goal complete!' : 'Ring claimed you.';
+  $('#res-headline').textContent = lessonDone ? 'Lesson complete!'
+    : res.goalMet ? 'Goal complete!' : 'Ring claimed you.';
   const bd = $('#score-breakdown');
   bd.innerHTML = '';
   const table = document.createElement('dl');
   table.className = 'sr-score';
-  for (const [k, v] of Object.entries(res.breakdown || {})) {
-    const dt = document.createElement('dt'); dt.textContent = k;
-    const dd = document.createElement('dd'); dd.textContent = String(v);
+  for (const row of res.breakdown || []) {
+    const dt = document.createElement('dt');
+    dt.textContent = row.detail ? `${row.label} (${row.detail})` : row.label;
+    const dd = document.createElement('dd'); dd.textContent = String(row.amount);
     table.append(dt, dd);
   }
   const total = document.createElement('p');
-  total.textContent = `Total ${res.total} · peak length ${(res.peakTrail / 100).toFixed(1)} m · ticks ${res.elapsedTicks}`;
+  total.textContent = `Total ${res.total} · peak length ${meters(res.peakTrail)} m · ticks ${res.elapsedTicks}`;
   bd.append(table, total);
-  $('#res-note').textContent = cur.state.terminal ? `Ended: ${String(cur.state.terminal.reason).replace(/-/g, ' ')}` : '';
+  $('#res-note').textContent = lessonDone
+    ? `Ended: every step of ${cur.item.name} complete`
+    : cur.state.terminal ? `Ended: ${String(cur.state.terminal.reason).replace(/-/g, ' ')}` : '';
   showScreen('results');
 }
 
@@ -185,13 +313,19 @@ function frame(now) {
   cur.acc += dt;
   let steps = 0;
   while (cur.acc >= TICK_MS && steps < 6) {
+    const me = human();
     if (cur.steerDir !== 0) {
-      const rate = cur.state.ruleset.serpent.turnRate;
+      // Track the rate the simulation will actually turn at, so held keys do
+      // not build up a heading debt while boosting (boost turns slower).
+      const sp = cur.state.ruleset.serpent;
+      const rate = me && me.boostOn ? sp.boostTurnRate : sp.turnRate;
       cur.desiredHeading = (cur.desiredHeading + cur.steerDir * rate + rules.HEADING_MAX) % rules.HEADING_MAX;
       pushSteer();
     }
     pushBoost();
-    rules.step(cur.state);
+    const events = rules.step(cur.state);
+    sonify(events);
+    lessonTick(events);
     cur.acc -= TICK_MS;
     steps++;
   }
@@ -211,13 +345,15 @@ function setPaused(on) {
   if (!cur || cur.over) on = false;
   if (paused === on) return;
   paused = on;
+  if (on) { cur.steerDir = 0; cur.boostWanted = false; }
   showScreen(on ? 'pause' : 'play');
 }
 
 const KEY_STEER = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1 };
 
 window.addEventListener('keydown', (e) => {
-  if (!cur) return;
+  if (!cur || cur.over || $('[data-sr-screen="help"]')?.hidden === false) return;
+  if (paused && e.code !== 'Escape' && e.code !== 'KeyP') return;
   if (e.code in KEY_STEER) { cur.steerDir = KEY_STEER[e.code]; e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { cur.boostWanted = true; e.preventDefault(); }
   else if (e.code === 'Escape' || e.code === 'KeyP') { setPaused(!paused); e.preventDefault(); }
@@ -264,9 +400,14 @@ function resizeCanvas() {
 document.addEventListener('click', (e) => {
   const el = e.target.closest('[id], [data-sr-nav]');
   if (!el) return;
+  if (el.id === 'sr-help-open') { setPaused(true); return; }
   if (el.id === 'btn-pause') { setPaused(true); return; }
   const nav = el.getAttribute && el.getAttribute('data-sr-nav');
-  if (nav === 'play-daily') startLevel(dailyItem);
+  if (nav === 'daily-setup' || nav === 'daily') {
+    dailyItem = content.dailyContent();
+    $('#daily-brief').textContent = `${dailyItem.name}. ${dailyItem.brief}`;
+  }
+  if (nav === 'play-daily') startLevel(content.dailyContent());
   else if (nav === 'retry' && cur) startLevel(cur.item);
   else if (nav === 'title' || el.id === 'btn-leave' || el.id === 'btn-help-close' || el.id === 'btn-err-close') {
     cur = null; paused = false;

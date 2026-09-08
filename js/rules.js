@@ -887,7 +887,7 @@ export function scoreBreakdown(rs, s) {
   return [
     { key: 'motes', label: 'Motes gathered', amount: s.score.motes * w.mote, detail: `${s.score.motes} × ${w.mote}` },
     { key: 'mass', label: 'Mass consumed', amount: s.score.massEaten * w.massUnit, detail: `${s.score.massEaten} × ${w.massUnit}` },
-    { key: 'peak', label: 'Peak length', amount: s.score.peakTrail * w.peakLength, detail: `${Math.round(s.score.peakTrail * rs.serpent.baseSpeed / 100)} m × ${w.peakLength}` },
+    { key: 'peak', label: 'Peak length', amount: s.score.peakTrail * w.peakLength, detail: `${(s.score.peakTrail / 10).toFixed(1)} m × ${w.peakLength}` },
     { key: 'survival', label: 'Survival', amount: Math.floor(s.score.survivalTicks / TICK_RATE) * w.survival, detail: `${(s.score.survivalTicks / TICK_RATE).toFixed(0)} s` },
     { key: 'eliminations', label: 'Eliminations', amount: s.score.eliminations * w.elimination, detail: `${s.score.eliminations} × ${w.elimination}` },
     { key: 'goal', label: 'Objective', amount: s.score.goal * w.goal, detail: s.score.goal ? 'complete' : '—' },
