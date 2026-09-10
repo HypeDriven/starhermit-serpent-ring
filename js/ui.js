@@ -33,6 +33,7 @@ export function initUI() {
     switch (target) {
       case 'modes': screen = 'modes'; break;
       case 'daily': screen = 'daily-setup'; break;
+      case 'daily-rules': screen = 'help'; break;
       case 'journey': screen = 'journey-setup'; break;
       case 'learn': screen = 'learn-setup'; break;
       case 'challenge': screen = 'challenge-setup'; break;

@@ -98,6 +98,7 @@ function populate() {
     '<p>Your serpent glides forward on its own. Steer with the pointer or with ← / → (A / D); hold Space (or ↑) to boost.</p>',
     '<p>Gather light motes to grow and score. The pale rim, the dark island and the red thorns all end your glide — unless the ruleset says otherwise.</p>',
     '<p>Each mode states its goal: reach a length, beat a score, survive the clock or outlast your rivals.</p>',
+    '<p>In Practice, press U (or Ctrl+Z) to rewind a bad moment. Undo is not available in ranked modes.</p>',
   ].join('');
 }
 
@@ -330,7 +331,7 @@ function frame(now) {
     steps++;
   }
   const canvas = $('#game-canvas');
-  if (canvas) render(canvas, cur.state);
+  if (canvas) render(canvas, cur.state, content.themeById(cur.item.theme));
   updateHud();
   finishIfTerminal();
 }
@@ -356,6 +357,14 @@ window.addEventListener('keydown', (e) => {
   if (paused && e.code !== 'Escape' && e.code !== 'KeyP') return;
   if (e.code in KEY_STEER) { cur.steerDir = KEY_STEER[e.code]; e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { cur.boostWanted = true; e.preventDefault(); }
+  else if (e.code === 'KeyU' || ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ')) {
+    // Undo where the ruleset permits it (Practice); ignored elsewhere.
+    const me = human();
+    if (me && rules.getLegalActions(cur.state, me.id).undo.valid) {
+      rules.applyCommand(cur.state, rules.makeCommand(me.id, 'undo'));
+    }
+    e.preventDefault();
+  }
   else if (e.code === 'Escape' || e.code === 'KeyP') { setPaused(!paused); e.preventDefault(); }
 });
 window.addEventListener('keyup', (e) => {

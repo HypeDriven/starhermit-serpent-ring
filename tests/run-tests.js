@@ -115,6 +115,32 @@ await t('hitting the rim ends a solo round', () => {
   check(s0.terminal.reason === 'collision', 'unexpected reason ' + s0.terminal.reason);
 });
 
+await t('undo is legal only where the ruleset permits and rewinds state', () => {
+  // Ranked-style ruleset: the query must refuse, and the command must agree.
+  const s0 = game({ bots: { count: 0 }, allowUndo: false });
+  const me = s0.serpents[0];
+  check(!getLegalActions(s0, me.id).undo.valid, 'undo allowed without allowUndo');
+  const refused = applyCommand(s0, { id: 'u0', serpent: me.id, type: 'undo' });
+  check(!refused.ok && refused.reason === 'undo-not-permitted', 'wrong refusal reason');
+
+  // Practice-style ruleset: undo rewinds position, mass and score.
+  const s1 = game({ bots: { count: 0 }, allowUndo: true });
+  const p1 = s1.serpents[0];
+  for (let i = 0; i < 40; i++) step(s1);
+  check(getLegalActions(s1, p1.id).undo.valid, 'undo refused in practice');
+  const before = { x: p1.x, y: p1.y, motes: p1.score.motes, trail: p1.trail.length };
+  for (let i = 0; i < 10; i++) step(s1);
+  const accepted = applyCommand(s1, { id: 'u1', serpent: p1.id, type: 'undo' });
+  check(accepted.ok, 'undo command rejected in practice');
+  const events = step(s1);
+  check(events.some((e) => e.type === 'undo' && e.serpent === p1.id), 'undo event not emitted');
+  check(p1.x !== before.x || p1.y !== before.y, 'position did not change across rewind');
+  check(p1.score.motes <= before.motes + 10, 'mote count rewound implausibly');
+  check(p1.trail.length <= before.trail + 10, 'trail grew across rewind');
+  check(p1.undoRing.length <= 1, 'undo ring not drained');
+  check(p1.invalidActions === 0, 'undo counted as invalid');
+});
+
 await t('results expose a component breakdown that sums to the total', () => {
   const s0 = game({ bots: { count: 1 } });
   for (let i = 0; i < 120; i++) step(s0);

@@ -1,13 +1,23 @@
 /**
  * Serpent Ring — canvas 2D renderer (no external dependencies).
+ * Presentation colors come from the content item's theme (see content.js);
+ * the fallback palette matches the Night Garden theme.
  */
 const M_PER_UNIT = 0.01; // 100 sim units == 1 display meter
 
-export function render(canvas, state) {
+const FALLBACK_THEME = {
+  sky: 0x0a0f18, floor: 0x101b2a, island: 0x0d1524,
+  rimGlow: 0x37e2c8, mote: 0x9fe8ff, moteBloom: 0xffd75e,
+};
+
+const css = (hex) => '#' + (hex & 0xffffff).toString(16).padStart(6, '0');
+
+export function render(canvas, state, theme) {
+  const T = Object.assign({}, FALLBACK_THEME, theme);
   const ctx = canvas.getContext('2d');
   const w = canvas.width, h = canvas.height;
   ctx.clearRect(0, 0, w, h);
-  ctx.fillStyle = '#0a0f18';
+  ctx.fillStyle = css(T.sky);
   ctx.fillRect(0, 0, w, h);
 
   const cx = w / 2, cy = h / 2;
@@ -16,12 +26,17 @@ export function render(canvas, state) {
   // Arena ring: outer wall and inner island.
   ctx.beginPath();
   ctx.arc(cx, cy, state.arena.outer * scale, 0, Math.PI * 2);
-  ctx.fillStyle = '#101b2a';
+  ctx.fillStyle = css(T.floor);
   ctx.fill();
+  ctx.lineWidth = 2;
+  ctx.strokeStyle = css(T.rimGlow);
+  ctx.globalAlpha = 0.6;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
   if (state.arena.inner > 0) {
     ctx.beginPath();
     ctx.arc(cx, cy, state.arena.inner * scale, 0, Math.PI * 2);
-    ctx.fillStyle = '#0d1524';
+    ctx.fillStyle = css(T.island);
     ctx.fill();
   }
 
@@ -38,7 +53,7 @@ export function render(canvas, state) {
     const r = m.bloom ? 5 : 3;
     ctx.beginPath();
     ctx.arc(cx + m.x * scale, cy - m.y * scale, r, 0, Math.PI * 2);
-    ctx.fillStyle = m.bloom ? '#ffd75e' : '#9fe8ff';
+    ctx.fillStyle = m.bloom ? css(T.moteBloom) : css(T.mote);
     ctx.fill();
   }
 

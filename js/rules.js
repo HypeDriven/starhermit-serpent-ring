@@ -277,6 +277,8 @@ function makeSerpent(state, player, index, total) {
     recentCmds: [],
     // scoring components
     score: { motes: 0, massEaten: 0, peakTrail: trail.length, survivalTicks: 0, eliminations: 0, goal: 0 },
+    // practice-mode rewind buffer (only filled when the ruleset allows undo)
+    undoRing: [],
     bot: player.isBot ? { nextThink: 0, desired: heading, flee: 0, boostWish: false } : null,
     goalMet: false,
     goalTick: -1,
@@ -465,6 +467,11 @@ export function applyCommand(state, cmd) {
       if (state.phase !== 'active') result = { ok: false, reason: 'round-not-active' };
       break;
     }
+    case 'undo': {
+      const la = getLegalActions(state, s.id);
+      if (!la.undo.valid) result = { ok: false, reason: la.undo.reason };
+      break;
+    }
     case 'noop':
       break;
     default:
@@ -511,6 +518,17 @@ function runQueuedCommands(state, events) {
           killSerpent(state, s, 'conceded', null, events);
         }
         break;
+      case 'undo': {
+        // Rewind to the oldest buffered tick (≤ ~half a second) and drain the
+        // ring so a held key cannot chain rewinds back through the round.
+        const ring = s.undoRing;
+        if (ring && ring.length) {
+          restoreSerpent(s, ring[0]);
+          s.undoRing = [];
+          events.push({ type: 'undo', serpent: s.id, x: s.x, y: s.y });
+        }
+        break;
+      }
       default:
         break;
     }
@@ -612,6 +630,31 @@ function botThink(state, s) {
  *  Simulation step
  * ------------------------------------------------------------------ */
 
+// Undo rewind depth: the ring holds one snapshot per tick; the oldest is
+// restored on 'undo', so practice rewinds at most this many ticks (~0.5 s
+// at 30 ticks/s — enough to take back a bad turn, not to re-play the round).
+const UNDO_RING_MAX = 16;
+
+function snapshotSerpent(s) {
+  return {
+    x: s.x, y: s.y, heading: s.heading, targetHeading: s.targetHeading,
+    boostOn: s.boostOn, boostTicksUsed: s.boostTicksUsed, drainAccum: s.drainAccum,
+    mass: s.mass, invuln: s.invuln, peakTrail: s.peakTrail,
+    trail: s.trail.slice(),
+    score: { ...s.score },
+  };
+}
+
+function restoreSerpent(s, snap) {
+  s.x = snap.x; s.y = snap.y;
+  s.heading = snap.heading; s.targetHeading = snap.targetHeading;
+  s.boostOn = snap.boostOn; s.boostTicksUsed = snap.boostTicksUsed;
+  s.drainAccum = snap.drainAccum;
+  s.mass = snap.mass; s.invuln = snap.invuln; s.peakTrail = snap.peakTrail;
+  s.trail = snap.trail.slice();
+  s.score = { ...snap.score };
+}
+
 export function step(state) {
   const events = [];
   if (state.phase !== 'active') return events;
@@ -633,6 +676,16 @@ export function step(state) {
   }
 
   runQueuedCommands(state, events);
+
+  // Practice rewind buffer: capture the settled state at each tick boundary
+  // (before this tick's movement) so 'undo' has a deterministic snapshot.
+  if (rs.allowUndo) {
+    for (const s of state.serpents) {
+      if (!s.alive) continue;
+      s.undoRing.push(snapshotSerpent(s));
+      if (s.undoRing.length > UNDO_RING_MAX) s.undoRing.shift();
+    }
+  }
 
   // --- Movement ---
   const sp = rs.serpent;
@@ -999,6 +1052,12 @@ export function migrateState(state) {
     if (typeof state.cmdSeq !== 'number') state.cmdSeq = 0;
     state.schema = 1;
     v = 1;
+  }
+  if (v === 1) {
+    // v1 (revision): serpents gained the practice-mode undo ring.
+    for (const s of state.serpents) {
+      if (!Array.isArray(s.undoRing)) s.undoRing = [];
+    }
   }
   if (v !== SCHEMA_VERSION) {
     throw new Error('unsupported state schema ' + state.schema);
