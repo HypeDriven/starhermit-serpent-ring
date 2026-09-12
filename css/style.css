@@ -53,3 +53,15 @@ button.sr-iconbtn { padding: .5em .9em; }
 @media (max-width: 700px) {
   .sr-screen { padding: .6rem; }
 }
+
+/* Short landscape (phones sideways): canvas is sized by the remaining height
+   and the objective/progress/pause HUD sits beside it, so pause and progress
+   are on screen without scrolling. */
+button.sr-iconbtn { min-width: 44px; min-height: 44px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .sr-topbar { padding: .3rem 1rem; }
+  .sr-play { display: flex; align-items: center; gap: .8rem; padding: .4rem .8rem; }
+  #game-canvas { width: auto; height: calc(100dvh - 4.2rem); max-height: none; aspect-ratio: 1 / 1; margin: 0; flex: 0 0 auto; }
+  .sr-hud { flex: 1 1 0; min-width: 0; text-align: left; padding-top: 0; }
+  .sr-hud #btn-pause { margin-top: .4em; }
+}
