@@ -15,7 +15,12 @@ html, body { margin: 0; padding: 0; height: 100%; background: var(--sr-bg); colo
 
 .sr-topbar { display: flex; align-items: center; gap: 1rem; background: var(--sr-panel); padding: .5rem 1rem; }
 .sr-title { font-size: 1.2rem; margin: 0; color: #fff; }
-.sr-clock { margin-left: auto; color: var(--sr-muted); }
+.sr-profile { margin-left: auto; display: flex; align-items: baseline; gap: .5rem; color: var(--sr-muted); font-size: .85rem; }
+.sr-player { color: var(--sr-text); }
+.sr-player:empty { display: none; }
+.sr-sync[data-sync="synced"] { color: #7fd98f; }
+.sr-sync[data-sync="saving"] { color: var(--sr-accent); }
+.sr-clock { color: var(--sr-muted); }
 
 h2.sr-h2 { font-size: 1.3rem; margin: .4rem 0 .8rem; color: #fff; }
 p { line-height: 1.5; }

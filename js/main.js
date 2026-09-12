@@ -8,6 +8,7 @@ import * as rules from './rules.js';
 import * as content from './content.js';
 import { render } from './render.js';
 import { playEvent } from './audio.js';
+import * as platform from './platform.js';
 
 const $ = (sel) => document.querySelector(sel);
 const TICK_MS = 1000 / rules.TICK_RATE;
@@ -303,6 +304,10 @@ function finishIfTerminal() {
   $('#res-note').textContent = lessonDone
     ? `Ended: every step of ${cur.item.name} complete`
     : cur.state.terminal ? `Ended: ${String(cur.state.terminal.reason).replace(/-/g, ' ')}` : '';
+  const rec = platform.recordResult(cur.item, res);
+  $('#res-best').textContent = rec
+    ? `Best ${rec.best} · goal met ${rec.wins}/${rec.plays} · peak ${meters(rec.bestPeak)} m`
+    : '';
   showScreen('results');
 }
 
@@ -433,6 +438,8 @@ setInterval(() => {
 }, 1000);
 
 populate();
+platform.init();
+platform.loadSave();
 initUI();
 bindPointer();
 showScreen('title');

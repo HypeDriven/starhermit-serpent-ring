@@ -14,6 +14,10 @@
 <div id="sr-app" class="sr-shell">
   <header class="sr-topbar sr-hideable" aria-label="Game title bar">
     <h1 class="sr-title">Serpent Ring</h1>
+    <div class="sr-profile">
+      <span class="sr-player" data-sr-live="player"></span>
+      <span class="sr-sync" data-sr-live="sync"></span>
+    </div>
     <div class="sr-clock" data-sr-live="clock"></div>
     <button type="button" class="sr-btn sr-iconbtn" id="sr-help-open" aria-label="Help and rules">?</button>
   </header>
@@ -107,6 +111,7 @@
       <h2 class="sr-h2" id="res-headline"></h2>
       <div id="score-breakdown"></div>
       <p id="res-note"></p>
+      <p id="res-best"></p>
       <button type="button" class="sr-btn sr-primary" data-sr-nav="retry">Play again</button>
     </section>
 

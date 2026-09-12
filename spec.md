@@ -162,7 +162,7 @@ Follow the skill pack's acceptance gate: deterministic seeds, debug views for co
 - `ui`: responsive DOM shell, focus, localization, settings, overlays, accessibility mirror.
 - `audio`: buses, event mapping, focus/background behavior, decode and memory policy.
 - `content`: versioned levels, themes, tutorials, validation metadata.
-- `platform`: token-aware REST/WebSocket adapter, retries, rate-limit handling, telemetry consent.
+- `platform`: token-aware REST adapter (fragment launch token, Bearer, 45-min re-mint, profile nickname, one-slot zip cloud save); the shipped solo client uses no WebSocket, leaderboards, or telemetry.
 
 No module may mutate rules state except through a validated command. Rendering consumes immutable snapshots plus interpolation data. UI state and simulation state are separate so closing a drawer cannot affect a match.
 
@@ -186,6 +186,7 @@ No module may mutate rules state except through a validated command. Rendering c
 ### Packaging and launch
 - Ship a browser distribution with `starhermit.txt` at its root, `name=Serpent Ring`, and `launch=index.html`. Keep source files, secrets, design documents, and source maps outside the uploaded distribution.
 - Read the game scope from the short-lived launch token rather than hard-coding a slug. Use same-origin `/api` and `/ws` routes when hosted. Refresh account tokens through the host shell; never persist access or launch tokens in local storage.
+- Shipped (js/platform.js): fragment `#game_token` read once and stripped, `sub`/`game_scope` decoded, Bearer on every call, 45-minute refresh via `POST /api/v1/games/{slug}/launch-token`, nickname via `GET /api/v1/users/{sub}/profile` with a `"Player "+id.slice(0,8)` fallback (never `/api/v1/me`, never usernames), and a one-slot zip cloud save at `GET/PUT /api/v1/me/cloud-saves/{slug}` (2 s debounce + pagehide flush, remote-preferred load, local records/wins doc with localStorage as the offline cache, sync status in the top bar).
 - Synchronize countdowns and daily boundaries with `GET /api/v1/time` using round-trip-adjusted offset. Treat rate limits and structured `{"error":"..."}` responses as recoverable UI states.
 
 ### Identity, profile, presence, and preferences
