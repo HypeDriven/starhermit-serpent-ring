@@ -65,3 +65,28 @@ button.sr-iconbtn { min-width: 44px; min-height: 44px; }
   .sr-hud { flex: 1 1 0; min-width: 0; text-align: left; padding-top: 0; }
   .sr-hud #btn-pause { margin-top: .4em; }
 }
+
+/* Title hero vignette (render.js renderHero) */
+.sr-hero-canvas { display: block; width: min(90vw, 360px); aspect-ratio: 2 / 1; margin: 0 auto -.4rem;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at center, #000 70%, transparent 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at center, #000 70%, transparent 100%); }
+/* A hidden screen stays hidden even when a layout rule sets its display (short landscape .sr-play). */
+.sr-screen[hidden] { display: none !important; }
+
+/* Graphics settings panel (graphics.js) */
+.sr-gfx-panel { max-width: 460px; margin: 0 auto; }
+.sr-gfx-row { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .35rem 0; border-bottom: 1px solid #1d2a40; }
+.sr-gfx-row > label { color: var(--sr-text); flex: 1 1 auto; min-width: 0; }
+.sr-gfx-row select { flex: 0 1 13.5rem; min-width: 0; max-width: 64%; min-height: 44px; background: var(--sr-panel); color: var(--sr-text); border: 1px solid #2c3d5a; border-radius: .5em; padding: .3em .5em; font-size: .95rem; }
+.sr-gfx-row select:focus-visible, .sr-gfx-row input:focus-visible { outline: 2px solid var(--sr-accent); outline-offset: 1px; }
+.sr-gfx-range { display: flex; align-items: center; gap: .5rem; flex: 0 1 12.5rem; min-width: 0; white-space: nowrap; }
+.sr-gfx-range input { flex: 1 1 auto; min-width: 0; min-height: 44px; accent-color: var(--sr-accent); }
+.sr-gfx-range output { flex: 0 0 3.2em; text-align: right; color: var(--sr-muted); }
+.sr-gfx-check { justify-content: flex-start; }
+.sr-gfx-check input { width: 22px; height: 22px; margin: 11px 0; accent-color: var(--sr-accent); }
+.sr-gfx-summary { color: var(--sr-muted); font-size: .85rem; overflow-wrap: anywhere; }
+.sr-gfx-note { color: var(--sr-accent); font-size: .85rem; }
+[data-sr-screen="graphics"] .sr-h2 { max-width: 460px; margin-left: auto; margin-right: auto; }
+[data-sr-screen="graphics"] .sr-backbtn { display: block; margin: .6rem auto 0; }
+.sr-fps { position: fixed; left: 8px; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 5; pointer-events: none; font: 12px/1.2 ui-monospace, monospace; color: var(--sr-muted); background: rgba(11,18,32,.7); padding: 2px 6px; border-radius: 4px; }
+@media (max-height: 520px) { .sr-hero-canvas { display: none; } }

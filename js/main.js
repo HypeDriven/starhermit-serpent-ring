@@ -6,7 +6,8 @@
 import { initUI } from './ui.js';
 import * as rules from './rules.js';
 import * as content from './content.js';
-import { render } from './render.js';
+import { render, renderHero, fxEvents, resetFx } from './render.js';
+import * as graphics from './graphics.js';
 import { playEvent } from './audio.js';
 import * as platform from './platform.js';
 
@@ -129,6 +130,8 @@ function startLevel(item) {
     cur.lesson = { index: 0, done: false };
     resetLessonStep(me);
   }
+  resetFx();
+  graphics.resetTiming();
   showScreen('play');
   resizeCanvas();
   updateHud();
@@ -311,9 +314,20 @@ function finishIfTerminal() {
   showScreen('results');
 }
 
+function drawHero(now) {
+  const hero = $('#sr-hero-canvas');
+  if (!hero || hero.offsetParent === null) return;
+  const ratio = graphics.pixelRatio();
+  const w = Math.max(1, Math.round(hero.clientWidth * ratio));
+  const h = Math.max(1, Math.round(hero.clientHeight * ratio));
+  if (hero.width !== w || hero.height !== h) { hero.width = w; hero.height = h; }
+  renderHero(hero, content.THEMES[0], now);
+}
+
 function frame(now) {
   requestAnimationFrame(frame);
-  if (!cur || cur.over || paused) { if (cur) cur.last = now; return; }
+  if (!cur) drawHero(now);
+  if (!cur || cur.over || paused) { if (cur) cur.last = now; graphics.resetTiming(); return; }
   const dt = Math.min(100, now - cur.last);
   cur.last = now;
   cur.acc += dt;
@@ -331,12 +345,14 @@ function frame(now) {
     pushBoost();
     const events = rules.step(cur.state);
     sonify(events);
+    fxEvents(events, cur.state, content.themeById(cur.item.theme));
     lessonTick(events);
     cur.acc -= TICK_MS;
     steps++;
   }
   const canvas = $('#game-canvas');
-  if (canvas) render(canvas, cur.state, content.themeById(cur.item.theme));
+  if (canvas) render(canvas, cur.state, content.themeById(cur.item.theme), now);
+  graphics.frameTick(now);
   updateHud();
   finishIfTerminal();
 }
@@ -358,7 +374,7 @@ function setPaused(on) {
 const KEY_STEER = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1 };
 
 window.addEventListener('keydown', (e) => {
-  if (!cur || cur.over || $('[data-sr-screen="help"]')?.hidden === false) return;
+  if (!cur || cur.over || $('[data-sr-screen="help"]')?.hidden === false || graphics.isOpen()) return;
   if (paused && e.code !== 'Escape' && e.code !== 'KeyP') return;
   if (e.code in KEY_STEER) { cur.steerDir = KEY_STEER[e.code]; e.preventDefault(); }
   else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { cur.boostWanted = true; e.preventDefault(); }
@@ -405,7 +421,9 @@ function bindPointer() {
 function resizeCanvas() {
   const canvas = $('#game-canvas');
   if (!canvas) return;
-  const dpr = Math.min(2, window.devicePixelRatio || 1);
+  // Backing-store ratio from the Graphics settings: min(dpr, preset cap) ×
+  // render scale × adaptive scale (Low caps at 1, as cheap as the plain build).
+  const dpr = graphics.pixelRatio();
   const w = Math.max(1, Math.round(canvas.clientWidth * dpr));
   const h = Math.max(1, Math.round(canvas.clientHeight * dpr));
   if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; }
@@ -438,6 +456,8 @@ setInterval(() => {
 }, 1000);
 
 populate();
+graphics.onChange(() => resizeCanvas());
+graphics.initGraphics();
 platform.init();
 platform.loadSave();
 initUI();

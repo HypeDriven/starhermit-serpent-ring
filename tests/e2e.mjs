@@ -319,6 +319,97 @@ async function runPass(browser, name, ctxOpts, { full }) {
   console.log(`ok - ${name}: no page errors`);
 }
 
+// ---------- Graphics settings pass ----------
+/** Through the visible UI: open Graphics from the title, switch presets,
+ *  override a category, confirm it applies and survives reload, then play a
+ *  few seconds at Ultra and reopen the panel from the pause menu. Console
+ *  warnings count as failures here too. */
+async function graphicsPass(browser, name, ctxOpts) {
+  const errors = [];
+  const context = await browser.newContext(ctxOpts);
+  const page = await context.newPage();
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if ((m.type() !== 'error' && m.type() !== 'warning') || browserNoise.test(m.text())) return;
+    const url = m.location()?.url || '';
+    if (/Failed to load resource/.test(m.text()) && /\/api\/|\/favicon/.test(url)) return;
+    errors.push(`console ${m.type()}: ${m.text()}`);
+  });
+  const body = (attr) => page.evaluate((a) => document.body.getAttribute(a), attr);
+  const summary = async () => ((await page.textContent('#gfx-summary')) || '').trim();
+  const expect = (cond, msg) => { if (!cond) throw new Error(`${name} graphics: ${msg}`); };
+  try {
+    await page.goto(BASE, { waitUntil: 'load' });
+    await page.waitForSelector('[data-sr-screen="title"]:not([hidden])');
+    expect(await body('data-gfx-auto') === 'true', 'Auto is not the default');
+    const autoPreset = await body('data-gfx-preset');
+    expect(['low', 'balanced', 'high', 'ultra'].includes(autoPreset), `bad auto preset ${autoPreset}`);
+
+    await page.click('#btn-gfx-open');
+    await page.waitForSelector('[data-sr-screen="graphics"]:not([hidden])');
+    const autoLabel = await page.locator('#gfx-preset option[value="auto"]').textContent();
+    expect(/Auto \(detected: /.test(autoLabel), `auto label "${autoLabel}"`);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow <= 0, `panel overflows horizontally by ${overflow}px`);
+    for (const id of ['#gfx-preset', '#gfx-scale', '#gfx-glow', '#gfx-detail', '#gfx-adaptive', '#gfx-showfps', '#btn-gfx-close']) {
+      await page.locator(id).scrollIntoViewIfNeeded();
+      const bb = await page.locator(id).boundingBox();
+      expect(bb && bb.x >= 0 && bb.x + bb.width <= ctxOpts.viewport.width + 1, `${id} cut off`);
+    }
+
+    await page.selectOption('#gfx-preset', 'low');
+    expect(await body('data-gfx-preset') === 'low', 'Low not applied');
+    expect(/plain drawing/.test(await summary()), `Low summary "${await summary()}"`);
+    await page.selectOption('#gfx-preset', 'high');
+    expect(await body('data-gfx-preset') === 'high', 'High not applied');
+    expect(/shadows/.test(await summary()), `High summary "${await summary()}"`);
+    await page.selectOption('#gfx-shadows', 'off');
+    expect(!/shadows/.test(await summary()), 'shadow override not applied');
+    ok(`${name}: Graphics panel switches Low → High and applies a Shadows override`);
+
+    await page.reload({ waitUntil: 'load' });
+    await page.waitForSelector('[data-sr-screen="title"]:not([hidden])');
+    expect(await body('data-gfx-preset') === 'high', 'preset lost on reload');
+    await page.click('#btn-gfx-open');
+    expect(await page.inputValue('#gfx-preset') === 'high', 'preset select lost on reload');
+    expect(await page.inputValue('#gfx-shadows') === 'off', 'override lost on reload');
+    await page.selectOption('#gfx-preset', 'ultra');
+    expect(await page.inputValue('#gfx-shadows') === 'preset', 'choosing a preset did not clear overrides');
+    await page.locator('#gfx-scale').fill('150');
+    expect(((await page.textContent('#gfx-scale-value')) || '').trim() === '150%', 'render scale label');
+    await page.check('#gfx-showfps');
+    expect(await page.locator('#sr-fps').isVisible(), 'fps readout hidden');
+    await page.screenshot({ path: SHOT('graphics', name) });
+    await page.click('#btn-gfx-close');
+    await page.waitForSelector('[data-sr-screen="title"]:not([hidden])');
+    ok(`${name}: settings survive reload; preset clears overrides; scale + fps toggles work`);
+
+    // A few seconds of play at Ultra, then the pause menu's Graphics entry.
+    await startJourney1(page);
+    await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(700); await page.keyboard.up('ArrowLeft');
+    await page.keyboard.down('Space'); await page.waitForTimeout(600); await page.keyboard.up('Space');
+    await page.waitForTimeout(1200);
+    await page.screenshot({ path: SHOT('play-ultra', name) });
+    await page.click('#btn-pause');
+    await page.waitForSelector('[data-sr-screen="pause"]:not([hidden])');
+    await page.click('#btn-pause-gfx');
+    await page.waitForSelector('[data-sr-screen="graphics"]:not([hidden])');
+    await page.selectOption('#gfx-preset', 'low');
+    await page.uncheck('#gfx-showfps');
+    await page.keyboard.press('Escape');
+    await page.waitForSelector('[data-sr-screen="pause"]:not([hidden])');
+    await page.click('#btn-resume');
+    await page.waitForSelector('[data-sr-screen="play"]:not([hidden])');
+    await page.waitForTimeout(800);
+    expect(await body('data-gfx-preset') === 'low', 'Low from pause not applied');
+    ok(`${name}: Ultra play, pause → Graphics → Low, Escape back to pause, resume`);
+  } finally {
+    await context.close();
+  }
+  if (errors.length) throw new Error(`${name} graphics pass had console output:\n  ${errors.join('\n  ')}`);
+  console.log(`ok - ${name}: graphics pass has no console errors or warnings`);
+}
+
 // ---------- main ----------
 let browser = null;
 try {
@@ -330,6 +421,8 @@ try {
   await runPass(browser, 'desktop', { viewport: { width: 1280, height: 800 } }, { full: true });
   await runPass(browser, 'mobile',
     { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, { full: false });
+  await graphicsPass(browser, 'desktop', { viewport: { width: 1280, height: 800 } });
+  await graphicsPass(browser, 'mobile', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   console.log('\nE2E PASS — serpent-ring, desktop + mobile, no page errors');
 } catch (e) {
   failures++;

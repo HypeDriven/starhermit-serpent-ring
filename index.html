@@ -26,6 +26,7 @@
     <!-- Title / home -->
     <section class="sr-screen" data-sr-screen="title" hidden>
       <div class="sr-hero">
+        <canvas id="sr-hero-canvas" class="sr-hero-canvas" aria-hidden="true"></canvas>
         <h2>Serpent Ring</h2>
         <p class="sr-tagline">Steer, gather light, and outlast the ring.</p>
       </div>
@@ -35,6 +36,7 @@
         <button type="button" class="sr-btn" data-sr-nav="journey">Journey</button>
         <button type="button" class="sr-btn" data-sr-nav="learn">Learn</button>
         <button type="button" class="sr-btn" data-sr-nav="challenge">Challenge</button>
+        <button type="button" class="sr-btn" id="btn-gfx-open">Graphics</button>
       </nav>
     </section>
 
@@ -102,8 +104,16 @@
           <label class="sr-opt"><span>Music volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="music" /></label>
           <label class="sr-opt"><span>Sounds volume</span><input type="range" min="0" max="100" step="5" value="100" data-sr-audio="sfx" /></label>
         </div>
+        <button type="button" class="sr-btn" id="btn-pause-gfx">Graphics</button>
         <button type="button" class="sr-btn sr-backbtn" id="btn-leave">Leave to title</button>
       </nav>
+    </section>
+
+    <!-- Graphics settings (built by js/graphics.js) -->
+    <section class="sr-screen sr-overlay" data-sr-screen="graphics" hidden>
+      <h2 class="sr-h2" id="gfx-title">Graphics</h2>
+      <div id="gfx-panel" class="sr-gfx-panel"></div>
+      <button type="button" class="sr-btn sr-backbtn" id="btn-gfx-close">Back</button>
     </section>
 
     <!-- Results -->
@@ -128,6 +138,8 @@
       <p id="err-msg"></p>
       <button type="button" class="sr-btn sr-backbtn" id="btn-err-close">Close error</button>
     </section>
+
+    <div id="sr-fps" class="sr-fps" aria-hidden="true" hidden></div>
 
     <!-- Loading -->
     <div class="sr-loading" data-sr-live="loading" hidden></div>

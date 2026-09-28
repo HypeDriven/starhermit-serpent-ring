@@ -7,6 +7,8 @@ import {
   makeResult, getResults, scoreBreakdown, seedFromString, cloneState, HEADING_MAX,
 } from '../js/rules.js';
 import { __zip } from '../js/platform.js';
+import * as gfx from '../js/gfx.js';
+import { pickLocale, strings } from '../js/graphics.js';
 
 let passed = 0;
 let failed = 0;
@@ -168,6 +170,55 @@ await t('cloud-save zip helper round-trips a stored entry', () => {
   check(back === json, 'zip round trip diverged');
   const viaB64 = new TextDecoder().decode(unzipFirstEntry(base64ToBytes(bytesToBase64(zip))));
   check(viaB64 === json, 'base64 zip round trip diverged');
+});
+
+// ---- Graphics quality model (js/gfx.js) ----
+await t('gfx: detectPreset maps GPU strings to tiers', () => {
+  check(gfx.detectPreset('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)') === 'low', 'swiftshader');
+  check(gfx.detectPreset('llvmpipe (LLVM 15.0.7, 256 bits)') === 'low', 'llvmpipe');
+  check(gfx.detectPreset('ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0)') === 'high', 'rtx');
+  check(gfx.detectPreset('Apple M2 Pro') === 'high', 'apple m');
+  check(gfx.detectPreset('ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11)') === 'balanced', 'intel');
+  check(gfx.detectPreset('Adreno (TM) 650') === 'balanced', 'adreno');
+  check(gfx.detectPreset('') === 'balanced', 'unknown');
+  check(gfx.detectPreset('Apple M2 Pro', { mobile: true }) === 'balanced', 'mobile cap');
+  check(gfx.detectPreset('SwiftShader', { mobile: true }) === 'low', 'mobile keeps low');
+});
+
+await t('gfx: resolve applies preset, overrides and clamps scale', () => {
+  const auto = gfx.resolve({}, 'low');
+  check(auto.auto && auto.preset === 'low' && !auto.effects, 'auto low has no effects');
+  check(auto.adaptive === true && auto.showFps === false, 'defaults');
+  const hi = gfx.resolve({ preset: 'high' }, 'low');
+  check(!hi.auto && hi.preset === 'high' && hi.shadows === 'on' && hi.glow === 'on' && hi.effects, 'high row');
+  const ov = gfx.resolve({ preset: 'high', glow: 'off', particles: 'bogus' }, 'low');
+  check(ov.glow === 'off' && ov.particles === 'high', 'override + invalid ignored');
+  check(gfx.resolve({ preset: 'low', render_scale: 9 }, 'low').scale === 2, 'scale clamps high');
+  check(gfx.resolve({ preset: 'low', render_scale: 0.1 }, 'low').scale === 0.5, 'scale clamps low');
+  check(gfx.resolve({ preset: 'ultra' }).scale === 1.25, 'ultra scale');
+  check(gfx.resolve({ adaptive: false, show_fps: true }, 'high').adaptive === false, 'adaptive off');
+  check(gfx.pixelRatio(gfx.resolve({ preset: 'low' }), 3, 1) === 1, 'low caps dpr at 1');
+  check(gfx.pixelRatio(gfx.resolve({ preset: 'high' }), 3, 0.6) === 1.2, 'high dpr cap × adaptive');
+  check(gfx.presetTier('balanced', 'particles') === 'low', 'presetTier');
+  check(/px$/.test(gfx.describe(hi, [720, 720])) && /shadows/.test(gfx.describe(hi)), 'describe');
+});
+
+await t('gfx: choosing a preset clears overrides but keeps scale/toggles', () => {
+  const next = gfx.choosePreset({ preset: 'high', glow: 'off', detail: 'plain', render_scale: 1.5, show_fps: true }, 'low');
+  check(next.preset === 'low' && !('glow' in next) && !('detail' in next), 'overrides cleared');
+  check(next.render_scale === 1.5 && next.show_fps === true, 'scale/toggles kept');
+  check(gfx.choosePreset({}, 'nonsense').preset === 'auto', 'unknown -> auto');
+});
+
+await t('gfx: Graphics panel strings exist in every locale', () => {
+  const need = Object.keys(strings('en-US'));
+  for (const loc of ['en-US', 'en-GB', 'es-419', 'es-ES', 'de-DE', 'fr-FR', 'fr-CA', 'pt-BR', 'it-IT']) {
+    const s = strings(loc);
+    for (const k of need) check(typeof s[k] === 'string' && s[k].length, `${loc} missing ${k}`);
+    if (!loc.startsWith('en')) check(s.quality !== 'Quality', `${loc} untranslated`);
+  }
+  check(pickLocale(['de-AT']) === 'de-DE' && pickLocale(['fr-CA']) === 'fr-CA' && pickLocale(['es-MX']) === 'es-419', 'pickLocale');
+  check(pickLocale(['en-GB']) === 'en-GB' && pickLocale(['xx']) === 'en-US', 'pickLocale fallback');
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
