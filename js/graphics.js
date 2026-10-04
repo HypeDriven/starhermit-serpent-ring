@@ -175,6 +175,14 @@ export function pixelRatio() {
 
 export function onChange(fn) { listeners.push(fn); }
 
+/** The saved graphics choices (for the platform settings mirror). */
+export function getSaved() { return JSON.parse(JSON.stringify(saved)); }
+/** Replace the saved graphics choices (platform settings win at start). */
+export function setSaved(next) {
+  saved = next && typeof next === 'object' ? JSON.parse(JSON.stringify(next)) : {};
+  persist(); apply();
+}
+
 function apply() {
   resolved = gfx.resolve(saved, detected);
   if (!resolved.adaptive) adaptiveScale = 1;

@@ -6,8 +6,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Serpent Ring</title>
 <link rel="stylesheet" href="./css/style.css" />
-<script type="module" src="./js/main.js"></script>
 <script src="browser-guard.js"></script>
+<script src="starhermit-sdk.js"></script>
+<script type="module" src="./js/main.js"></script>
 </head>
 <body class="sr-root">
 <noscript><p class="sr-noscript">Serpent Ring requires JavaScript and WebGL.</p></noscript>
@@ -38,6 +39,8 @@
         <button type="button" class="sr-btn" data-sr-nav="learn">Learn</button>
         <button type="button" class="sr-btn" data-sr-nav="challenge">Challenge</button>
         <button type="button" class="sr-btn" id="btn-gfx-open">Graphics</button>
+        <button type="button" class="sr-btn" id="btn-invite" hidden>Invite a friend</button>
+        <button type="button" class="sr-btn" id="btn-signin" hidden>Sign in with StarHermit</button>
       </nav>
     </section>
 
@@ -144,6 +147,7 @@
 
     <!-- Loading -->
     <div class="sr-loading" data-sr-live="loading" hidden></div>
+    <p id="sr-toast" class="sr-toast" role="status" hidden></p>
   </main>
 </div>
 </body>

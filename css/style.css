@@ -40,6 +40,11 @@ button.sr-iconbtn { padding: .5em .9em; }
 .sr-screen { max-width: 760px; margin: 0 auto; padding: 1rem; }
 .sr-hero, .sr-menu { text-align: center; }
 .sr-menu .sr-btn { display: block; width: min(90vw, 320px); margin: .4em auto; }
+.sr-menu .sr-btn[hidden] { display: none; }
+.sr-toast { position: fixed; z-index: 50; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+  max-width: calc(100vw - 32px); margin: 0; padding: .6em 1em; border-radius: .6em; background: var(--sr-panel); color: #fff;
+  overflow-wrap: anywhere; text-align: center; }
+.sr-toast[hidden] { display: none; }
 .sr-mode-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
 .sr-mode-card { text-align: left; padding: 1em; }
 .sr-mode-card p { margin: .3em 0 0; color: var(--sr-muted); font-size: .9rem; }

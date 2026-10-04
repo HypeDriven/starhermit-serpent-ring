@@ -10,6 +10,8 @@ import { render, renderHero, fxEvents, resetFx } from './render.js';
 import * as graphics from './graphics.js';
 import { playEvent } from './audio.js';
 import * as platform from './platform.js';
+import { setMusicVolume, setSfxVolume } from './audio.js';
+import { shText } from './sh-strings.js';
 
 const $ = (sel) => document.querySelector(sel);
 const TICK_MS = 1000 / rules.TICK_RATE;
@@ -96,11 +98,21 @@ function populate() {
 
   $('#daily-brief').textContent = `${dailyItem.name}. ${dailyItem.brief}`;
 
+  renderHelp();
+}
+
+// Help names the effective keyboard bindings (platform controls API).
+function keyLabel(code) {
+  const named = { ArrowLeft: '←', ArrowRight: '→', ArrowUp: '↑', ArrowDown: '↓', Escape: 'Esc' };
+  return named[code] || code.replace(/^Key|^Digit/, '');
+}
+function keysOf(action) { return (platform.getBindings()[action] || []).map(keyLabel).join(' / '); }
+function renderHelp() {
   $('#help-body').innerHTML = [
-    '<p>Your serpent glides forward on its own. Steer with the pointer or with ← / → (A / D); hold Space (or ↑) to boost.</p>',
+    `<p>Your serpent glides forward on its own. Steer with the pointer or with ${keysOf('steer_left')} and ${keysOf('steer_right')}; hold ${keysOf('boost')} to boost. ${keysOf('pause')} pauses.</p>`,
     '<p>Gather light motes to grow and score. The pale rim, the dark island and the red thorns all end your glide — unless the ruleset says otherwise.</p>',
     '<p>Each mode states its goal: reach a length, beat a score, survive the clock or outlast your rivals.</p>',
-    '<p>In Practice, press U (or Ctrl+Z) to rewind a bad moment. Undo is not available in ranked modes.</p>',
+    `<p>In Practice, press ${keysOf('undo')} (or Ctrl+Z) to rewind a bad moment. Undo is not available in ranked modes.</p>`,
   ].join('');
 }
 
@@ -371,14 +383,17 @@ function setPaused(on) {
   showScreen(on ? 'pause' : 'play');
 }
 
-const KEY_STEER = { ArrowLeft: -1, KeyA: -1, ArrowRight: 1, KeyD: 1 };
+// Headings increase counter-clockwise in the y-up world: positive turns left.
+// Keys route by KeyboardEvent.code through the player's bindings (control.* in starhermit.txt).
+const STEER = { steer_left: 1, steer_right: -1 };
 
 window.addEventListener('keydown', (e) => {
   if (!cur || cur.over || $('[data-sr-screen="help"]')?.hidden === false || graphics.isOpen()) return;
-  if (paused && e.code !== 'Escape' && e.code !== 'KeyP') return;
-  if (e.code in KEY_STEER) { cur.steerDir = KEY_STEER[e.code]; e.preventDefault(); }
-  else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') { cur.boostWanted = true; e.preventDefault(); }
-  else if (e.code === 'KeyU' || ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ')) {
+  const action = platform.actionFor(e.code);
+  if (paused && action !== 'pause') return;
+  if (action in STEER) { cur.steerDir = STEER[action]; e.preventDefault(); }
+  else if (action === 'boost') { cur.boostWanted = true; e.preventDefault(); }
+  else if (action === 'undo' || ((e.ctrlKey || e.metaKey) && e.code === 'KeyZ')) {
     // Undo where the ruleset permits it (Practice); ignored elsewhere.
     const me = human();
     if (me && rules.getLegalActions(cur.state, me.id).undo.valid) {
@@ -386,12 +401,13 @@ window.addEventListener('keydown', (e) => {
     }
     e.preventDefault();
   }
-  else if (e.code === 'Escape' || e.code === 'KeyP') { setPaused(!paused); e.preventDefault(); }
+  else if (action === 'pause') { setPaused(!paused); e.preventDefault(); }
 });
 window.addEventListener('keyup', (e) => {
   if (!cur) return;
-  if (e.code in KEY_STEER && cur.steerDir === KEY_STEER[e.code]) cur.steerDir = 0;
-  else if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') cur.boostWanted = false;
+  const action = platform.actionFor(e.code);
+  if (action in STEER && cur.steerDir === STEER[action]) cur.steerDir = 0;
+  else if (action === 'boost') cur.boostWanted = false;
 });
 
 // Pointer steering: aim at the pointer position relative to the arena centre.
@@ -449,6 +465,61 @@ document.addEventListener('click', (e) => {
 window.addEventListener('resize', resizeCanvas);
 document.addEventListener('visibilitychange', () => { if (document.hidden && cur && !cur.over) setPaused(true); });
 
+/* ------------------------------------------------------------------ *
+ *  StarHermit account: sign-in, invite link, settings + bindings
+ * ------------------------------------------------------------------ */
+
+function toast(msg, ms = 3200) {
+  const t = $('#sr-toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.hidden = true; }, ms);
+}
+
+function renderAccount() {
+  const signin = $('#btn-signin');
+  const invite = $('#btn-invite');
+  if (signin) signin.hidden = platform.isHosted() || !platform.canSignIn();
+  if (invite) invite.hidden = !platform.isHosted();
+}
+
+function audioLevels() {
+  const v = (k) => Number($(`[data-sr-audio="${k}"]`)?.value ?? 0);
+  return { music: v('music'), sfx: v('sfx') };
+}
+
+async function initAccount() {
+  $('#btn-signin').textContent = shText('signIn');
+  $('#btn-invite').textContent = shText('invite');
+  $('#btn-signin').addEventListener('click', () => platform.signIn());
+  $('#btn-invite').addEventListener('click', async () => {
+    const url = platform.inviteLink();
+    if (!url) return;
+    try { await navigator.clipboard.writeText(url); toast(shText('inviteCopied')); }
+    catch { toast(shText('inviteLink', { url }), 8000); }
+  });
+  platform.onAuth((signedIn) => { if (!signedIn) toast(shText('signedOut')); renderAccount(); });
+  renderAccount();
+  // Signed in: the platform's settings and key bindings win over this device's copy.
+  const remote = await platform.loadSettings();
+  if (remote.graphics) graphics.setSaved(remote.graphics);
+  if (remote.audio) {
+    for (const [k, set] of [['music', setMusicVolume], ['sfx', setSfxVolume]]) {
+      const v = Number(remote.audio[k]);
+      const input = $(`[data-sr-audio="${k}"]`);
+      if (Number.isFinite(v) && input) { input.value = String(v); set(v); }
+    }
+  }
+  graphics.onChange(() => platform.mirrorSettings({ graphics: graphics.getSaved() }));
+  document.addEventListener('change', (e) => {
+    if (e.target && e.target.hasAttribute && e.target.hasAttribute('data-sr-audio')) platform.mirrorSettings({ audio: audioLevels() });
+  });
+  await platform.loadBindings();
+  renderHelp();
+}
+
 // Live clock in the title bar.
 setInterval(() => {
   const el = $('[data-sr-live="clock"]');
@@ -461,6 +532,7 @@ graphics.initGraphics();
 platform.init();
 platform.loadSave();
 initUI();
+initAccount();
 bindPointer();
 showScreen('title');
 requestAnimationFrame(frame);

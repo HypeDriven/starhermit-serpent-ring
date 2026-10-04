@@ -6,7 +6,6 @@ import {
   createGame, defaultRuleset, step, applyCommand, getLegalActions, hashState,
   makeResult, getResults, scoreBreakdown, seedFromString, cloneState, HEADING_MAX,
 } from '../js/rules.js';
-import { __zip } from '../js/platform.js';
 import * as gfx from '../js/gfx.js';
 import { pickLocale, strings } from '../js/graphics.js';
 
@@ -159,18 +158,7 @@ await t('results expose a component breakdown that sums to the total', () => {
   check(ranked[0].placement === 1 && ranked.length === s0.serpents.length, 'ranking malformed');
 });
 
-await t('cloud-save zip helper round-trips a stored entry', () => {
-  const { zipStore, unzipFirstEntry, bytesToBase64, base64ToBytes } = __zip;
-  const doc = { version: 1, records: { 'practice-easy': { plays: 2, wins: 1, best: 120, bestPeak: 90 } } };
-  const json = JSON.stringify(doc);
-  const zip = zipStore('save.json', new TextEncoder().encode(json));
-  check(zip.length > 30 + json.length, 'zip implausibly small');
-  check(zip[0] === 0x50 && zip[1] === 0x4b, 'missing local file header signature');
-  const back = new TextDecoder().decode(unzipFirstEntry(zip));
-  check(back === json, 'zip round trip diverged');
-  const viaB64 = new TextDecoder().decode(unzipFirstEntry(base64ToBytes(bytesToBase64(zip))));
-  check(viaB64 === json, 'base64 zip round trip diverged');
-});
+// Cloud-save zipping lives in the StarHermit SDK; tests/platform.test.mjs covers the round trip.
 
 // ---- Graphics quality model (js/gfx.js) ----
 await t('gfx: detectPreset maps GPU strings to tiers', () => {

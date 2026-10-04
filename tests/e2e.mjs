@@ -20,8 +20,8 @@
  *     is called once at bootstrap so the canvas receives pointermove /
  *     pointerdown / pointerup / pointercancel listeners, and `pointerSteer()`
  *     aims the serpent at the pointer (see the heading maths in main.js
- *     and render.js). Holding ArrowRight gradually curls the serpent
- *     inwards (falls toward the central island), ArrowLeft curls it
+ *     and render.js). Holding ArrowLeft gradually curls the serpent
+ *     inwards (falls toward the central island), ArrowRight curls it
  *     outwards (toward the rim); the e2e drives the WIN via the keyboard
  *     orbital controller below.
  *   * The game exposes NO round state on window and calls NO /api routes
@@ -32,7 +32,7 @@
  * Steering strategy (real controls only): the authoritative rules engine
  * is deterministic (js/rules.js, seeded, no DOM). We drive the visible
  * serpent to a real WIN by holding the mid-ring orbit radius with a
- * bang-bang controller — ArrowRight when drifting too far out, ArrowLeft
+ * bang-bang controller — ArrowLeft when drifting too far out, ArrowRight
  * when drifting too far in — which keeps it gliding inside the arena where
  * the mote field is dense, so it collects mass continuously and reaches
  * the stage's reach-length goal. The only observation used is the same
@@ -146,8 +146,8 @@ async function orbitState(page) {
 }
 
 /** Keep the serpent weaving across a safe radius band (4200..9200 sim
- *  units, well clear of the island@3000 and wall@12000): ArrowRight curls
- *  inward, ArrowLeft curls outward. A slow sinusoidal target radius forces
+ *  units, well clear of the island@3000 and wall@12000): ArrowLeft curls
+ *  inward, ArrowRight curls outward. A slow sinusoidal target radius forces
  *  the serpent to constantly traverse the mote field, so it keeps eating
  *  (a fixed-mid orbit can settle into a small circle that leaves the mote
  *  band). Real key down/up only. Never lets it touch the rim or island. */
@@ -162,8 +162,8 @@ async function driveOrbit(page, tMs) {
   const targetPx = (mid + A * Math.sin(phase)) * st.scale;
   const stPx = st.r;
   // hysteresis (±300 sim px) prevents key chatter
-  if (stPx > targetPx + 300 * st.scale) await pressHold(page, 'ArrowRight');
-  else if (stPx < targetPx - 300 * st.scale) await pressHold(page, 'ArrowLeft');
+  if (stPx > targetPx + 300 * st.scale) await pressHold(page, 'ArrowLeft');
+  else if (stPx < targetPx - 300 * st.scale) await pressHold(page, 'ArrowRight');
   else await releaseKeys(page);
 }
 
@@ -386,7 +386,7 @@ async function graphicsPass(browser, name, ctxOpts) {
 
     // A few seconds of play at Ultra, then the pause menu's Graphics entry.
     await startJourney1(page);
-    await page.keyboard.down('ArrowLeft'); await page.waitForTimeout(700); await page.keyboard.up('ArrowLeft');
+    await page.keyboard.down('ArrowRight'); await page.waitForTimeout(700); await page.keyboard.up('ArrowRight');
     await page.keyboard.down('Space'); await page.waitForTimeout(600); await page.keyboard.up('Space');
     await page.waitForTimeout(1200);
     await page.screenshot({ path: SHOT('play-ultra', name) });
