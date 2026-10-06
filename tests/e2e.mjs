@@ -354,7 +354,7 @@ async function graphicsPass(browser, name, ctxOpts) {
     for (const id of ['#gfx-preset', '#gfx-scale', '#gfx-glow', '#gfx-detail', '#gfx-adaptive', '#gfx-showfps', '#btn-gfx-close']) {
       await page.locator(id).scrollIntoViewIfNeeded();
       const bb = await page.locator(id).boundingBox();
-      expect(bb && bb.x >= 0 && bb.x + bb.width <= ctxOpts.viewport.width + 1, `${id} cut off`);
+      expect(bb && bb.x >= 0 && bb.x + bb.width <= page.viewportSize().width + 1, `${id} cut off`);
     }
 
     await page.selectOption('#gfx-preset', 'low');

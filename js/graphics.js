@@ -170,8 +170,12 @@ function detectGpu() {
 
 /** Canvas backing-store pixels per CSS pixel for the current settings. */
 export function pixelRatio() {
-  return gfx.pixelRatio(resolved, window.devicePixelRatio || 1, adaptiveScale);
+  // × the large-screen UI scale: the page is CSS-zoomed by it, so canvases (sized from their
+  // unzoomed clientWidth) need that many more backing pixels to stay crisp.
+  return gfx.pixelRatio(resolved, window.devicePixelRatio || 1, adaptiveScale) * uiScale();
 }
+
+function uiScale() { return (typeof window !== 'undefined' && window.UIScale?.value) || 1; }
 
 export function onChange(fn) { listeners.push(fn); }
 
@@ -300,7 +304,8 @@ function buildPanel() {
 function playfieldPixels() {
   const c = $('#game-canvas');
   if (c && c.clientWidth > 0) return [c.width, c.height];
-  const side = Math.max(1, Math.min(720, window.innerWidth - 32, window.innerHeight * 0.68));
+  const k = uiScale();
+  const side = Math.max(1, Math.min(720, (window.innerWidth - 32) / k, window.innerHeight * 0.68 / k));
   const px = Math.round(side * pixelRatio());
   return [px, px];
 }

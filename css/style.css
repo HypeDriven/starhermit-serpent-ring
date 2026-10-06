@@ -9,8 +9,11 @@
 * { box-sizing: border-box; }
 
 html, body { margin: 0; padding: 0; height: 100%; background: var(--sr-bg); color: var(--sr-text); font-family: system-ui, "Segoe UI", Roboto, sans-serif; }
+/* Large screens: ui-scale.js sets --ui-scale (exactly 1 up to 1600x1000) and the whole document-flow
+   page is zoomed by it (vw/vh below are divided; canvases render at clientWidth × dpr × scale). */
+body { zoom: var(--ui-scale, 1); }
 
-.sr-shell { display: flex; flex-direction: column; min-height: 100vh; }
+.sr-shell { display: flex; flex-direction: column; min-height: calc(100vh / var(--ui-scale, 1)); }
 .sr-main { flex: 1; padding-bottom: env(safe-area-inset-bottom); }
 
 .sr-topbar { display: flex; align-items: center; gap: 1rem; background: var(--sr-panel); padding: .5rem 1rem; }
@@ -39,10 +42,10 @@ button.sr-iconbtn { padding: .5em .9em; }
 /* screens and populated lists (main.js) */
 .sr-screen { max-width: 760px; margin: 0 auto; padding: 1rem; }
 .sr-hero, .sr-menu { text-align: center; }
-.sr-menu .sr-btn { display: block; width: min(90vw, 320px); margin: .4em auto; }
+.sr-menu .sr-btn { display: block; width: min(calc(90vw / var(--ui-scale, 1)), 320px); margin: .4em auto; }
 .sr-menu .sr-btn[hidden] { display: none; }
 .sr-toast { position: fixed; z-index: 50; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
-  max-width: calc(100vw - 32px); margin: 0; padding: .6em 1em; border-radius: .6em; background: var(--sr-panel); color: #fff;
+  max-width: calc(calc(100vw / var(--ui-scale, 1)) - 32px); margin: 0; padding: .6em 1em; border-radius: .6em; background: var(--sr-panel); color: #fff;
   overflow-wrap: anywhere; text-align: center; }
 .sr-toast[hidden] { display: none; }
 .sr-mode-grid { display: grid; gap: .6rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
@@ -54,7 +57,7 @@ button.sr-iconbtn { padding: .5em .9em; }
 .sr-opt { display: block; color: var(--sr-muted); margin: .4rem 0; }
 .sr-score { display: grid; grid-template-columns: 1fr auto; gap: 2px 16px; max-width: 320px; margin: 0 auto; }
 .sr-score dd { margin: 0; text-align: right; }
-#game-canvas { aspect-ratio: 1 / 1; max-height: 68vh; }
+#game-canvas { aspect-ratio: 1 / 1; max-height: calc(68vh / var(--ui-scale, 1)); }
 @media (max-width: 700px) {
   .sr-screen { padding: .6rem; }
 }
@@ -66,13 +69,23 @@ button.sr-iconbtn { min-width: 44px; min-height: 44px; }
 @media (max-height: 520px) and (orientation: landscape) {
   .sr-topbar { padding: .3rem 1rem; }
   .sr-play { display: flex; align-items: center; gap: .8rem; padding: .4rem .8rem; }
-  #game-canvas { width: auto; height: calc(100dvh - 4.2rem); max-height: none; aspect-ratio: 1 / 1; margin: 0; flex: 0 0 auto; }
+  #game-canvas { width: auto; height: calc(calc(100dvh / var(--ui-scale, 1)) - 4.6rem); /* 4.2rem left the page 6px taller than the screen */ max-height: none; aspect-ratio: 1 / 1; margin: 0; flex: 0 0 auto; }
   .sr-hud { flex: 1 1 0; min-width: 0; text-align: left; padding-top: 0; }
   .sr-hud #btn-pause { margin-top: .4em; }
+  /* the eight-button title menu in two columns so it fits without scrolling */
+  .sr-menu { display: grid; grid-template-columns: repeat(2, minmax(0, 260px)); justify-content: center; gap: .5em .6em; }
+  .sr-menu .sr-btn { width: 100%; margin: 0; }
+  .sr-hero h2 { margin: .2em 0; }
+  .sr-hero .sr-tagline { margin: .2em 0 .6em; }
+  /* results: score table beside the notes and Play again, so the button is on screen */
+  [data-sr-screen="results"] { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.2rem; align-content: start; }
+  [data-sr-screen="results"] .sr-h2 { grid-column: 1 / -1; }
+  [data-sr-screen="results"] #score-breakdown { grid-column: 1; grid-row: 2 / span 4; }
+  [data-sr-screen="results"] > p, [data-sr-screen="results"] > button { grid-column: 2; margin: .2em 0; justify-self: start; }
 }
 
 /* Title hero vignette (render.js renderHero) */
-.sr-hero-canvas { display: block; width: min(90vw, 360px); aspect-ratio: 2 / 1; margin: 0 auto -.4rem;
+.sr-hero-canvas { display: block; width: min(calc(90vw / var(--ui-scale, 1)), 360px); aspect-ratio: 2 / 1; margin: 0 auto -.4rem;
   -webkit-mask-image: radial-gradient(ellipse 50% 50% at center, #000 70%, transparent 100%);
   mask-image: radial-gradient(ellipse 50% 50% at center, #000 70%, transparent 100%); }
 /* A hidden screen stays hidden even when a layout rule sets its display (short landscape .sr-play). */
