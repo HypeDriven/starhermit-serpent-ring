@@ -169,7 +169,7 @@ The **Graphics** panel opens from the title menu and from the pause menu (Escape
 - `ui`: responsive DOM shell, focus, localization, settings, overlays, accessibility mirror.
 - `audio`: buses, event mapping, focus/background behavior, decode and memory policy.
 - `content`: versioned levels, themes, tutorials, validation metadata.
-- `platform`: token-aware REST adapter (fragment launch token, Bearer, 45-min re-mint, profile nickname, one-slot zip cloud save); the shipped solo client uses no WebSocket, leaderboards, or telemetry.
+- `platform`: token-aware REST adapter (fragment launch token, Bearer, 45-min re-mint, profile nickname, one-slot zip cloud save); the shipped solo client uses no WebSocket or telemetry; it posts ranked rounds to the `high-score` leaderboard.
 
 No module may mutate rules state except through a validated command. Rendering consumes immutable snapshots plus interpolation data. UI state and simulation state are separate so closing a drawer cannot affect a match.
 
@@ -194,6 +194,7 @@ No module may mutate rules state except through a validated command. Rendering c
 - Ship a browser distribution with `starhermit.txt` at its root, `name=Serpent Ring`, and `launch=index.html`. Keep source files, secrets, design documents, and source maps outside the uploaded distribution.
 - Read the game scope from the short-lived launch token rather than hard-coding a slug. Use same-origin `/api` and `/ws` routes when hosted. Refresh account tokens through the host shell; never persist access or launch tokens in local storage.
 - Shipped: all platform access goes through the canonical StarHermit SDK (`starhermit-sdk.js`, an unedited copy of `tools/starhermit-sdk.js`, loaded before the modules) wrapped by `js/platform.js`. `StarHermit.init()` runs at start: it reads the launch token from `#game_token=` or the sign-in return `#access_token=`, strips it, takes the slug from `game_scope`, keeps the token in memory and renews it; if renewal is refused the game keeps playing locally and offers sign-in again. On `*.starhermit.com` without a token the title shows **Sign in with StarHermit** (hidden when signed in and when running locally); standalone play makes no network calls. The top bar shows the profile nickname (`StarHermit.profile()`, "Player <id>" fallback). Personal records are cloud-saved in the `game:<slug>` slot (`loadJSON` remote-first, `saveJSON` debounced 2 s, `flushSave(true)` on pagehide/hide, sync status in the top bar; localStorage stays the offline cache). Graphics choices and music/sound volumes mirror to the per-game settings KV (platform wins at start, changes patched). Keyboard actions are declared as `control.*` lines in `starhermit.txt` and keydown/keyup route by `event.code` through `StarHermit.loadBindings()`; Help names the effective keys. When signed in, the title shows **Invite a friend**, which copies `StarHermit.inviteLink()` with a confirmation toast.
+- Shipped leaderboard: `score-script.js` (canonical copy in the games repo's `tools/score-script.js`, declared as `server=score-script.js`) is the platform script; `server.js` stays the local dev server. One board, `high-score` (integer, higher is better, 0–1,000,000). When signed in, every finished Daily Challenge or Challenge round posts its total (floored at 0) through `StarHermit.submitScores` (a practice session whose `score-script.js` posts it), and the results screen shows "Leaderboard rank: #N" (or posted / not posted), localized in the nine locales (`js/sh-strings.js`). Standalone play posts nothing and shows no line.
 - Daily boundaries use the device's UTC clock (no per-game time route is reachable by launch tokens; the local `server.js` offers `GET /api/v1/time` for dev). Treat rate limits and structured `{"error":"..."}` responses as recoverable UI states.
 
 ### Identity, profile, presence, and preferences
@@ -218,7 +219,7 @@ No module may mutate rules state except through a validated command. Rendering c
 - Use the opaque peer relay only for non-authoritative ephemeral data that benefits from direct fan-out, such as cursors or drawing strokes; never use relay packets as the source of truth for score, collision, roles, or inventory.
 
 ### Publishing and operations
-- Keep the authoritative script inside the distribution and declare it with `server=server.js`. Choose a digest-pinned container only if profiling proves the sandbox unsuitable; no initial design here requires one.
+- Keep the authoritative script inside the distribution and declare it with `server=` (today `server=score-script.js`, the score-posting script). Choose a digest-pinned container only if profiling proves the sandbox unsuitable; no initial design here requires one.
 - Define control defaults, achievement metadata, and versioned settings before release. Publish immutable build assets, verify the launch path, maintain migration tests for saves, and expose no secret configuration to the client.
 - Capture anonymous funnel events only for start, tutorial step, round end, retry, settings change, and error category. Avoid raw text, precise personal data, and cross-title tracking.
 

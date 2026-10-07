@@ -148,6 +148,20 @@ export function init() {
 }
 
 export function isHosted() { return state.hosted; }
+
+/** Post a finished ranked round to the `high-score` board through the game's
+ *  score-script.js (StarHermit.submitScores) → { posted, rank }. */
+export async function submitScore(total) {
+  if (!state.hosted) return { posted: false, rank: null };
+  const sh = SH();
+  const keys = await sh.submitScores({ 'high-score': total });
+  if (!keys || !keys.includes('high-score')) return { posted: false, rank: null };
+  try {
+    const r = await sh.leaderboard('high-score', { pageSize: 100 });
+    const me = (r.items || []).find((i) => i.userId === sh.userId);
+    return { posted: true, rank: me ? me.rank : null };
+  } catch { return { posted: true, rank: null }; }
+}
 export function nickname() { return state.nickname; }
 export function canSignIn() { const sh = SH(); return !!(sh && sh.canSignIn()); }
 export function signIn() { const sh = SH(); return !!(sh && sh.signIn()); }

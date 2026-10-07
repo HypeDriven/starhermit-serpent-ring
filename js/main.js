@@ -324,6 +324,23 @@ function finishIfTerminal() {
     ? `Best ${rec.best} · goal met ${rec.wins}/${rec.plays} · peak ${meters(rec.bestPeak)} m`
     : '';
   showScreen('results');
+  const ranked = cur.item.kind === 'daily' || cur.item.kind === 'challenge';
+  postToLeaderboard(ranked ? Math.max(0, res.total) : null);
+}
+
+// Signed in only: post a ranked round (Daily Challenge, Challenges) to the
+// `high-score` board and show the player's rank on the results screen.
+function postToLeaderboard(total) {
+  const line = $('#res-lb');
+  if (total == null || !platform.isHosted()) { line.hidden = true; return; }
+  line.hidden = false;
+  line.textContent = shText('lbPosting');
+  const round = cur;
+  platform.submitScore(total).then((r) => {
+    if (cur !== round) return;
+    line.textContent = !r.posted ? shText('lbNotPosted')
+      : r.rank ? shText('lbRank', { rank: r.rank }) : shText('lbPosted');
+  });
 }
 
 function drawHero(now) {

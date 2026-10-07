@@ -2,7 +2,7 @@ name=Serpent Ring
 description=Guide a luminous serpent, collect motes to grow, and use bursts of speed while avoiding other serpents' bodies.
 launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
-server=server.js
+server=score-script.js
 version=1.0.0
 cover=cover.jpg
 
