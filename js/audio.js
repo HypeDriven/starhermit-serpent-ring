@@ -62,7 +62,7 @@ function loadSample(name) {
 
 function playSample(buf) {
   const c = ensureCtx();
-  const src = c.createBufferSource();
+  const src = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(c.createBufferSource(), null) : c.createBufferSource());
   src.buffer = buf;
   src.connect(ensureSfxBus());
   src.start();
@@ -71,7 +71,7 @@ function playSample(buf) {
 function blip(freq, dur, vol) {
   try {
     const c = ensureCtx();
-    const o = c.createOscillator();
+    const o = (globalThis.GameOptions ? globalThis.GameOptions.trackSource(c.createOscillator(), null) : c.createOscillator());
     const g = c.createGain();
     o.type = 'sine';
     o.frequency.value = freq;
