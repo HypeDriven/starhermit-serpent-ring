@@ -131,7 +131,8 @@ export function strings(locale) {
   return Object.assign({}, L['en-US'], L[PARENT[locale]] || {}, L[locale] || {});
 }
 
-const S = strings(pickLocale(typeof navigator !== 'undefined' ? (navigator.languages || [navigator.language]) : []));
+// Panel strings follow the game language (i18n.js); setLocale() relabels the open panel live.
+let S = strings('en-US');
 const fmt = (s, v) => String(s).replace(/\{(\w+)\}/g, (_, k) => (v[k] ?? ''));
 
 /* ------------------------------------------------------------------ *
@@ -254,8 +255,8 @@ function el(tag, attrs = {}, ...kids) {
   return e;
 }
 
-function row(labelText, control, id) {
-  return el('div', { class: 'sr-gfx-row' }, el('label', { for: id, text: labelText }), control);
+function row(key, control, id) {
+  return el('div', { class: 'sr-gfx-row' }, el('label', { for: id, text: S[key], 'data-gfx-label': key }), control);
 }
 
 function buildPanel() {
@@ -267,7 +268,7 @@ function buildPanel() {
     saved = gfx.choosePreset(saved, preset.value);
     persist(); apply();
   });
-  host.append(row(S.quality, preset, 'gfx-preset'));
+  host.append(row('quality', preset, 'gfx-preset'));
 
   const scale = el('input', { id: 'gfx-scale', type: 'range', min: '50', max: '200', step: '10', 'data-gfx': 'render_scale' });
   const scaleOut = el('output', { id: 'gfx-scale-value', for: 'gfx-scale' });
@@ -275,7 +276,7 @@ function buildPanel() {
     saved.render_scale = Number(scale.value) / 100;
     persist(); apply();
   });
-  host.append(row(S.scale, el('span', { class: 'sr-gfx-range' }, scale, scaleOut), 'gfx-scale'));
+  host.append(row('scale', el('span', { class: 'sr-gfx-range' }, scale, scaleOut), 'gfx-scale'));
 
   for (const [cat, tiers] of Object.entries(gfx.CATEGORIES)) {
     const sel = el('select', { id: 'gfx-' + cat, 'data-gfx': cat });
@@ -285,16 +286,16 @@ function buildPanel() {
       if (sel.value === 'preset') delete saved[cat]; else saved[cat] = sel.value;
       persist(); apply();
     });
-    host.append(row(S['cat_' + cat], sel, 'gfx-' + cat));
+    host.append(row('cat_' + cat, sel, 'gfx-' + cat));
   }
 
-  for (const [id, key, label, def] of [['gfx-adaptive', 'adaptive', S.adaptive, true], ['gfx-showfps', 'show_fps', S.fps, false]]) {
+  for (const [id, key, label, def] of [['gfx-adaptive', 'adaptive', 'adaptive', true], ['gfx-showfps', 'show_fps', 'fps', false]]) {
     const cb = el('input', { id, type: 'checkbox', 'data-gfx': key });
     cb.addEventListener('change', () => {
       if (cb.checked === def) delete saved[key]; else saved[key] = cb.checked;
       persist(); apply();
     });
-    host.append(el('div', { class: 'sr-gfx-row sr-gfx-check' }, cb, el('label', { for: id, text: label })));
+    host.append(el('div', { class: 'sr-gfx-row sr-gfx-check' }, cb, el('label', { for: id, text: S[label], 'data-gfx-label': label })));
   }
 
   host.append(el('p', { id: 'gfx-summary', class: 'sr-gfx-summary', 'aria-live': 'polite' }));
@@ -324,6 +325,7 @@ function syncPanel() {
   for (const cat of Object.keys(gfx.CATEGORIES)) {
     const sel = $('#gfx-' + cat);
     sel.options[0].textContent = fmt(S.fromPreset, { tier: tierName(gfx.presetTier(resolved.preset, cat)) });
+    for (const o of [...sel.options].slice(1)) o.textContent = tierName(o.value);
     sel.value = gfx.CATEGORIES[cat].includes(saved[cat]) ? saved[cat] : 'preset';
   }
   $('#gfx-adaptive').checked = resolved.adaptive;
@@ -366,16 +368,29 @@ function close() {
   if (opener && opener.focus) opener.focus();
 }
 
-export function initGraphics() {
+function labelButtons() {
+  for (const [sel, key] of [['#btn-gfx-open', 'open'], ['#btn-pause-gfx', 'open'], ['#btn-gfx-close', 'back'], ['#gfx-title', 'title']]) {
+    const e = $(sel);
+    if (e) e.textContent = S[key];
+  }
+}
+
+/** Switch the panel to another locale in place (labels, options, summary, buttons). */
+export function setLocale(locale) {
+  S = strings(locale);
+  for (const node of document.querySelectorAll('#gfx-panel [data-gfx-label]')) node.textContent = S[node.dataset.gfxLabel];
+  labelButtons();
+  syncPanel();
+}
+
+export function initGraphics(locale = 'en-US') {
+  S = strings(locale);
   load();
   const d = detectGpu();
   gpu = d.name;
   detected = d.preset;
   buildPanel();
-  for (const [sel, key] of [['#btn-gfx-open', 'open'], ['#btn-pause-gfx', 'open'], ['#btn-gfx-close', 'back'], ['#gfx-title', 'title']]) {
-    const e = $(sel);
-    if (e) e.textContent = S[key];
-  }
+  labelButtons();
   $('#btn-gfx-open')?.addEventListener('click', (e) => open('title', e.currentTarget));
   $('#btn-pause-gfx')?.addEventListener('click', (e) => open('pause', e.currentTarget));
   $('#btn-gfx-close')?.addEventListener('click', close);

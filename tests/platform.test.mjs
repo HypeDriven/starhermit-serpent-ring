@@ -18,15 +18,23 @@ const timers = { setTimeout: (fn, ms) => (ms > 5000 ? 0 : setTimeout(fn, ms)), c
 
 function stubNet() {
   const calls = [];
-  const store = { save: null, patches: [] };
+  const store = { save: null, etag: null, version: 0, patches: [] };
   const fetch = async (url, init = {}) => {
     const method = init.method || 'GET';
     calls.push({ method, url, auth: init.headers && init.headers.Authorization });
     const json = (code, body) => new Response(JSON.stringify(body), { status: code, headers: { 'Content-Type': 'application/json' } });
     if (url === '/api/v1/users/u-1234567890/profile') return json(200, { nickname: 'Ring Rui' });
+    if (url === '/api/v1/me/cloud-saves/game%3Aserpent-ring/info') return json(200, store.save ? { exists: true, etag: store.etag } : { exists: false });
     if (url === '/api/v1/me/cloud-saves/game%3Aserpent-ring') {
       if (method === 'GET') return store.save ? new Response(store.save, { status: 200 }) : json(404, {});
-      if (method === 'PUT') { store.save = Buffer.from(JSON.parse(init.body).dataBase64, 'base64'); return json(200, {}); }
+      if (method === 'PUT') {
+        // Conditional writes (SDK ETag): a write based on an older version loses with 412.
+        const h = init.headers || {};
+        if ((h['If-Match'] && h['If-Match'] !== store.etag) || (h['If-None-Match'] === '*' && store.save)) return json(412, { etag: store.etag });
+        store.save = Buffer.from(JSON.parse(init.body).dataBase64, 'base64');
+        store.etag = `"v${++store.version}"`;
+        return json(200, { etag: store.etag });
+      }
     }
     if (url === '/api/v1/games/serpent-ring/settings') {
       if (method === 'GET') return json(200, { settings: { graphics: { preset: 'low' }, audio: { music: 20, sfx: 80 } } });
@@ -50,7 +58,10 @@ async function load(hash, hostname, net) {
   globalThis.localStorage = storage();
   const P = await import(`../js/platform.js?i=${n++}`);
   P.init();
-  return { P, loc };
+  const g = { window: globalThis.window, document: globalThis.document, localStorage: globalThis.localStorage };
+  // Make this "device" current again (its SDK, document and storage) after loading another.
+  const use = () => Object.assign(globalThis, g);
+  return { P, loc, use };
 }
 
 test('hosted: token, nickname, cloud save, settings KV, bindings', async () => {
@@ -86,7 +97,8 @@ test('hosted: token, nickname, cloud save, settings KV, bindings', async () => {
 
 test('standalone: no network; sign-in only on the platform host', async () => {
   const net = stubNet();
-  const { P } = await load('', 'serpent-ring.starhermit.com', net);
+  // Sign-in is offered only on a game's UUID host (<uuid>.starhermit.com).
+  const { P } = await load('', '0b9d6f2e-3c4a-4e5b-9a7c-1d2e3f405162.starhermit.com', net);
   assert.equal(P.isHosted(), false);
   assert.equal(P.canSignIn(), true);
   await P.loadSave();
@@ -100,4 +112,31 @@ test('standalone: no network; sign-in only on the platform host', async () => {
   assert.deepEqual(net.calls, []);
   const local = await load('', 'localhost', stubNet());
   assert.equal(local.P.canSignIn(), false);
+});
+
+test('save conflict: a write that loses to another device is merged and saved again', async () => {
+  const net = stubNet();
+  const a = await load(`#game_token=${TOKEN}`, 'localhost', net);
+  await a.P.loadSave();
+  a.P.recordResult({ id: 'j1' }, { goalMet: true, total: 50, peakTrail: 10 });
+  await globalThis.window.StarHermit.flushSave();
+  // Another device loads the slot and saves its own progress first.
+  const b = await load(`#game_token=${TOKEN}`, 'localhost', net);
+  await b.P.loadSave();
+  b.P.recordResult({ id: 'j2' }, { goalMet: true, total: 70, peakTrail: 12 });
+  await globalThis.window.StarHermit.flushSave();
+  // Device A's next write is refused (412) → reload, merge, save again.
+  a.use();
+  let conflicts = 0;
+  a.P.onSaveConflict(() => { conflicts++; });
+  a.P.recordResult({ id: 'j1' }, { goalMet: false, total: 90, peakTrail: 20 });
+  await globalThis.window.StarHermit.flushSave();
+  for (let i = 0; i < 50 && !conflicts; i++) await sleep(5);
+  await globalThis.window.StarHermit.flushSave();
+  await sleep(30);
+  assert.equal(conflicts, 1);
+  const c = await load(`#game_token=${TOKEN}`, 'localhost', net);
+  const doc = await c.P.loadSave();
+  assert.deepEqual(doc.records.j1, { plays: 2, wins: 1, best: 90, bestPeak: 20 });
+  assert.deepEqual(doc.records.j2, { plays: 1, wins: 1, best: 70, bestPeak: 12 });
 });

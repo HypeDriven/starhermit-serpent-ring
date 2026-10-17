@@ -10,20 +10,21 @@
 <script src="ui-scale.js"></script>
 <script src="browser-guard.js"></script>
 <script src="starhermit-sdk.js"></script>
+<script src="sh-language.js"></script>
 <script type="module" src="./js/main.js"></script>
 </head>
 <body class="sr-root">
 <noscript><p class="sr-noscript">Serpent Ring requires JavaScript and WebGL.</p></noscript>
 
 <div id="sr-app" class="sr-shell">
-  <header class="sr-topbar sr-hideable" aria-label="Game title bar">
+  <header class="sr-topbar sr-hideable" aria-label="Game title bar" data-i18n-aria="Game title bar">
     <h1 class="sr-title">Serpent Ring</h1>
     <div class="sr-profile">
       <span class="sr-player" data-sr-live="player"></span>
       <span class="sr-sync" data-sr-live="sync"></span>
     </div>
     <div class="sr-clock" data-sr-live="clock"></div>
-    <button type="button" class="sr-btn sr-iconbtn" id="sr-help-open" aria-label="Help and rules">?</button>
+    <button type="button" class="sr-btn sr-iconbtn" id="sr-help-open" aria-label="Help and rules" data-i18n-aria="Help and rules">?</button>
   </header>
 
   <main class="sr-main" id="sr-main">
@@ -32,14 +33,14 @@
       <div class="sr-hero">
         <canvas id="sr-hero-canvas" class="sr-hero-canvas" aria-hidden="true"></canvas>
         <h2>Serpent Ring</h2>
-        <p class="sr-tagline">Steer, gather light, and outlast the ring.</p>
+        <p class="sr-tagline" data-i18n="Steer, gather light, and outlast the ring.">Steer, gather light, and outlast the ring.</p>
       </div>
-      <nav class="sr-menu" aria-label="Main menu">
-        <button type="button" class="sr-btn sr-primary" id="btn-play">Play</button>
-        <button type="button" class="sr-btn" data-sr-nav="daily">Daily Challenge</button>
-        <button type="button" class="sr-btn" data-sr-nav="journey">Journey</button>
-        <button type="button" class="sr-btn" data-sr-nav="learn">Learn</button>
-        <button type="button" class="sr-btn" data-sr-nav="challenge">Challenge</button>
+      <nav class="sr-menu" aria-label="Main menu" data-i18n-aria="Main menu">
+        <button type="button" class="sr-btn sr-primary" id="btn-play" data-i18n="Play">Play</button>
+        <button type="button" class="sr-btn" data-sr-nav="daily" data-i18n="Daily Challenge">Daily Challenge</button>
+        <button type="button" class="sr-btn" data-sr-nav="journey" data-i18n="Journey">Journey</button>
+        <button type="button" class="sr-btn" data-sr-nav="learn" data-i18n="Learn">Learn</button>
+        <button type="button" class="sr-btn" data-sr-nav="challenge" data-i18n="Challenge">Challenge</button>
         <button type="button" class="sr-btn" id="btn-gfx-open">Graphics</button>
         <button type="button" class="sr-btn" id="btn-invite" hidden>Invite a friend</button>
         <button type="button" class="sr-btn" id="btn-signin" hidden>Sign in with StarHermit</button>
@@ -48,77 +49,77 @@
 
     <!-- Mode select -->
     <section class="sr-screen" data-sr-screen="modes" hidden>
-      <h2 class="sr-h2">Choose a mode</h2>
+      <h2 class="sr-h2" data-i18n="Choose a mode">Choose a mode</h2>
       <div id="mode-list" class="sr-mode-grid"></div>
-      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="title">&larr; Back to title</button>
+      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="title" data-i18n="← Back to title">&larr; Back to title</button>
     </section>
 
     <!-- Practice difficulty -->
     <section class="sr-screen" data-sr-screen="practice-difficulty" hidden>
-      <h2 class="sr-h2">Practice — choose a difficulty</h2>
+      <h2 class="sr-h2" data-i18n="Practice — choose a difficulty">Practice — choose a difficulty</h2>
       <div id="diff-list"></div>
-      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="modes">&larr; Back to modes</button>
+      <button type="button" class="sr-btn sr-backbtn" data-sr-nav="modes" data-i18n="← Back to modes">&larr; Back to modes</button>
     </section>
 
     <!-- Daily -->
     <section class="sr-screen" data-sr-screen="daily-setup" hidden>
-      <h2 class="sr-h2">Daily Challenge</h2>
+      <h2 class="sr-h2" data-i18n="Daily Challenge">Daily Challenge</h2>
       <p id="daily-brief"></p>
       <div class="sr-rowbtns">
-        <button type="button" class="sr-btn sr-primary" data-sr-nav="play-daily">Play the daily challenge</button>
-        <button type="button" class="sr-btn" data-sr-nav="daily-rules">Rules and details</button>
+        <button type="button" class="sr-btn sr-primary" data-sr-nav="play-daily" data-i18n="Play the daily challenge">Play the daily challenge</button>
+        <button type="button" class="sr-btn" data-sr-nav="daily-rules" data-i18n="Rules and details">Rules and details</button>
       </div>
     </section>
 
     <!-- Journey -->
     <section class="sr-screen" data-sr-screen="journey-setup" hidden>
-      <h2 class="sr-h2">Journey — 40 stages in five chapters</h2>
+      <h2 class="sr-h2" data-i18n="Journey — 40 stages in five chapters">Journey — 40 stages in five chapters</h2>
       <p id="journey-summary"></p>
       <div id="chapter-list"></div>
     </section>
 
     <!-- Learn -->
     <section class="sr-screen" data-sr-screen="learn-setup" hidden>
-      <h2 class="sr-h2">Learn — five interactive lessons</h2>
+      <h2 class="sr-h2" data-i18n="Learn — five interactive lessons">Learn — five interactive lessons</h2>
       <p id="learn-summary"></p>
       <div id="lesson-list"></div>
     </section>
 
     <!-- Challenge -->
     <section class="sr-screen" data-sr-screen="challenge-setup" hidden>
-      <h2 class="sr-h2">Challenge — constrained goals</h2>
+      <h2 class="sr-h2" data-i18n="Challenge — constrained goals">Challenge — constrained goals</h2>
       <p id="challenge-summary"></p>
       <div id="chal-list"></div>
     </section>
 
     <!-- Play -->
     <section class="sr-screen sr-play" data-sr-screen="play" hidden>
-      <canvas id="game-canvas" aria-label="Serpent Ring playfield"></canvas>
+      <canvas id="game-canvas" aria-label="Serpent Ring playfield" data-i18n-aria="Serpent Ring playfield"></canvas>
       <div class="sr-hud">
         <div class="sr-objective" data-sr-live="objective" role="status" aria-live="polite"></div>
         <div class="sr-progress" data-sr-live="progress" aria-live="off"></div>
-        <button type="button" class="sr-btn sr-iconbtn" id="btn-pause" aria-label="Pause game">&#9208;</button>
+        <button type="button" class="sr-btn sr-iconbtn" id="btn-pause" aria-label="Pause game" data-i18n-aria="Pause game">&#9208;</button>
       </div>
     </section>
 
     <!-- Pause -->
     <section class="sr-screen sr-overlay" data-sr-screen="pause" hidden>
-      <h2 class="sr-h2">Paused</h2>
-      <nav aria-label="Pause menu">
-        <button type="button" class="sr-btn sr-primary" id="btn-resume">Resume</button>
+      <h2 class="sr-h2" data-i18n="Paused">Paused</h2>
+      <nav aria-label="Pause menu" data-i18n-aria="Pause menu">
+        <button type="button" class="sr-btn sr-primary" id="btn-resume" data-i18n="Resume">Resume</button>
         <div class="sr-rowbtns">
-          <label class="sr-opt"><span>Music volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="music" /></label>
-          <label class="sr-opt"><span>Sounds volume</span><input type="range" min="0" max="100" step="5" value="100" data-sr-audio="sfx" /></label>
+          <label class="sr-opt"><span data-i18n="Music volume">Music volume</span><input type="range" min="0" max="100" step="5" data-sr-audio="music" /></label>
+          <label class="sr-opt"><span data-i18n="Sounds volume">Sounds volume</span><input type="range" min="0" max="100" step="5" value="100" data-sr-audio="sfx" /></label>
         </div>
         <button type="button" class="sr-btn" id="btn-pause-gfx">Graphics</button>
-        <button type="button" class="sr-btn sr-backbtn" id="btn-leave">Leave to title</button>
+        <button type="button" class="sr-btn sr-backbtn" id="btn-leave" data-i18n="Leave to title">Leave to title</button>
       </nav>
     </section>
 
     <!-- Graphics settings (built by js/graphics.js) -->
     <section class="sr-screen sr-overlay" data-sr-screen="graphics" hidden>
       <h2 class="sr-h2" id="gfx-title">Graphics</h2>
-      <div id="gfx-panel" class="sr-gfx-panel"></div>
+      <div id="gfx-panel" class="sr-gfx-panel" data-options-graphics></div>
       <button type="button" class="sr-btn sr-backbtn" id="btn-gfx-close">Back</button>
     </section>
 
@@ -129,21 +130,21 @@
       <p id="res-note"></p>
       <p id="res-best"></p>
       <p id="res-lb" role="status" hidden></p>
-      <button type="button" class="sr-btn sr-primary" data-sr-nav="retry">Play again</button>
+      <button type="button" class="sr-btn sr-primary" data-sr-nav="retry" data-i18n="Play again">Play again</button>
     </section>
 
     <!-- Help -->
     <section class="sr-screen sr-overlay" data-sr-screen="help" hidden>
-      <h2 class="sr-h2">Help — rules and controls</h2>
+      <h2 class="sr-h2" data-i18n="Help — rules and controls">Help — rules and controls</h2>
       <div id="help-body"></div>
-      <button type="button" class="sr-btn sr-backbtn" id="btn-help-close">Close help</button>
+      <button type="button" class="sr-btn sr-backbtn" id="btn-help-close" data-i18n="Close help">Close help</button>
     </section>
 
     <!-- Error -->
     <section class="sr-screen sr-overlay" data-sr-screen="error" hidden>
-      <h2 class="sr-h2">Something went wrong</h2>
+      <h2 class="sr-h2" data-i18n="Something went wrong">Something went wrong</h2>
       <p id="err-msg"></p>
-      <button type="button" class="sr-btn sr-backbtn" id="btn-err-close">Close error</button>
+      <button type="button" class="sr-btn sr-backbtn" id="btn-err-close" data-i18n="Close error">Close error</button>
     </section>
 
     <div id="sr-fps" class="sr-fps" aria-hidden="true" hidden></div>

@@ -443,7 +443,7 @@ export function dailyContent(key = dailyKey()) {
   });
   return {
     id: 'daily-' + key, version: CONTENT_VERSION, kind: 'daily',
-    name: sk.name + ' — ' + key, brief: 'One shared ring for everyone today. Rank by score when time runs out.',
+    name: sk.name + ' — ' + key, baseName: sk.name, brief: 'One shared ring for everyone today. Rank by score when time runs out.',
     seed, ruleset, theme: sk.theme, dayKey: key,
     expectedSeconds: Math.round(sk.timeLimitTicks / TICK_RATE),
     ranked: true, tutorialFlags: [], par: null, mastery: false,

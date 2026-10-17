@@ -12,6 +12,7 @@ import { playEvent } from './audio.js';
 import * as platform from './platform.js';
 import { setMusicVolume, setSfxVolume } from './audio.js';
 import { shText } from './sh-strings.js';
+import { T, N, getLang, onLanguage, initLanguage } from './i18n.js';
 
 const $ = (sel) => document.querySelector(sel);
 const TICK_MS = 1000 / rules.TICK_RATE;
@@ -43,62 +44,79 @@ function btn(label, className, onClick, nav) {
 
 let dailyItem = content.dailyContent();
 
+/** A content item's display name in the current language (daily and practice names are composed). */
+function itemName(item) {
+  if (item.kind === 'daily' && item.dayKey) return T('{name} — {day}', { name: T(item.baseName || item.name), day: item.dayKey });
+  if (item.kind === 'practice' && item.difficulty) return T('Practice — {name}', { name: T(item.difficulty) });
+  return T(item.name);
+}
+const itemBrief = (item) => (item.brief ? T(item.brief) : '');
+
+/** Build (or rebuild, on a language change) every menu list built in code. */
 function populate() {
   const modeList = $('#mode-list');
+  modeList.textContent = '';
   for (const [label, brief, nav] of [
-    ['Practice', 'Free play against bot rivals. Pick a difficulty.', 'practice-difficulty'],
-    ['Journey', '40 authored stages in five chapters.', 'journey-setup'],
-    ['Learn', 'Five interactive lessons, one mechanic at a time.', 'learn-setup'],
-    ['Daily Challenge', 'One shared ring for everyone, today only.', 'daily-setup'],
-    ['Challenge', 'Constrained goals: clocks, limits, thorns.', 'challenge-setup'],
+    [N('Practice'), N('Free play against bot rivals. Pick a difficulty.'), 'practice-difficulty'],
+    [N('Journey'), N('40 authored stages in five chapters.'), 'journey-setup'],
+    [N('Learn'), N('Five interactive lessons, one mechanic at a time.'), 'learn-setup'],
+    [N('Daily Challenge'), N('One shared ring for everyone, today only.'), 'daily-setup'],
+    [N('Challenge'), N('Constrained goals: clocks, limits, thorns.'), 'challenge-setup'],
   ]) {
     const card = btn('', 'sr-mode-card', null, nav);
     const t = document.createElement('strong');
-    t.textContent = label;
+    t.textContent = T(label);
     const p = document.createElement('p');
-    p.textContent = brief;
+    p.textContent = T(brief);
     card.append(t, p);
     modeList.appendChild(card);
   }
 
   const diffList = $('#diff-list');
+  diffList.textContent = '';
   for (const d of content.PRACTICE_DIFFICULTIES) {
-    diffList.appendChild(btn(`${d.name} — ${d.brief}`, 'sr-blockbtn', () => startLevel({
-      id: 'practice-' + d.id, kind: 'practice', name: 'Practice — ' + d.name,
+    diffList.appendChild(btn(`${T(d.name)} — ${T(d.brief)}`, 'sr-blockbtn', () => startLevel({
+      id: 'practice-' + d.id, kind: 'practice', name: 'Practice — ' + d.name, difficulty: d.name,
       brief: d.brief, seed: rules.seedFromString('practice:' + d.id),
       ruleset: rules.defaultRuleset(Object.assign({ id: 'practice-' + d.id }, d.ruleset)),
     })));
   }
 
-  $('#journey-summary').textContent = `${content.JOURNEY.length} stages across five chapters.`;
+  $('#journey-summary').textContent = T('{n} stages across five chapters.', { n: content.JOURNEY.length });
   const chapterList = $('#chapter-list');
+  chapterList.textContent = '';
   let lastChapter = null;
   for (const item of content.JOURNEY) {
     if (item.chapter !== lastChapter) {
       lastChapter = item.chapter;
       const h = document.createElement('h3');
       h.className = 'sr-h3';
-      h.textContent = item.chapterName;
+      h.textContent = T(item.chapterName);
       chapterList.appendChild(h);
     }
-    chapterList.appendChild(btn(`${item.index}. ${item.name} — ${item.brief}`, 'sr-blockbtn', () => startLevel(item)));
+    chapterList.appendChild(btn(`${item.index}. ${itemName(item)} — ${itemBrief(item)}`, 'sr-blockbtn', () => startLevel(item)));
   }
 
-  $('#learn-summary').textContent = `${content.LESSONS.length} short lessons.`;
+  $('#learn-summary').textContent = T('{n} short lessons.', { n: content.LESSONS.length });
   const lessonList = $('#lesson-list');
+  lessonList.textContent = '';
   for (const item of content.LESSONS) {
-    lessonList.appendChild(btn(`${item.name} — ${item.brief}`, 'sr-blockbtn', () => startLevel(item)));
+    lessonList.appendChild(btn(`${itemName(item)} — ${itemBrief(item)}`, 'sr-blockbtn', () => startLevel(item)));
   }
 
-  $('#challenge-summary').textContent = `${content.CHALLENGES.length} constrained rings.`;
+  $('#challenge-summary').textContent = T('{n} constrained rings.', { n: content.CHALLENGES.length });
   const chalList = $('#chal-list');
+  chalList.textContent = '';
   for (const item of content.CHALLENGES) {
-    chalList.appendChild(btn(`${item.name} — ${item.brief}`, 'sr-blockbtn', () => startLevel(item)));
+    chalList.appendChild(btn(`${itemName(item)} — ${itemBrief(item)}`, 'sr-blockbtn', () => startLevel(item)));
   }
 
-  $('#daily-brief').textContent = `${dailyItem.name}. ${dailyItem.brief}`;
-
+  renderDailyBrief();
   renderHelp();
+}
+
+function renderDailyBrief() {
+  $('#daily-brief').textContent = `${itemName(dailyItem)}. ${itemBrief(dailyItem)}`;
 }
 
 // Help names the effective keyboard bindings (platform controls API).
@@ -108,12 +126,20 @@ function keyLabel(code) {
 }
 function keysOf(action) { return (platform.getBindings()[action] || []).map(keyLabel).join(' / '); }
 function renderHelp() {
-  $('#help-body').innerHTML = [
-    `<p>Your serpent glides forward on its own. Steer with the pointer or with ${keysOf('steer_left')} and ${keysOf('steer_right')}; hold ${keysOf('boost')} to boost. ${keysOf('pause')} pauses.</p>`,
-    '<p>Gather light motes to grow and score. The pale rim, the dark island and the red thorns all end your glide — unless the ruleset says otherwise.</p>',
-    '<p>Each mode states its goal: reach a length, beat a score, survive the clock or outlast your rivals.</p>',
-    `<p>In Practice, press ${keysOf('undo')} (or Ctrl+Z) to rewind a bad moment. Undo is not available in ranked modes.</p>`,
-  ].join('');
+  const body = $('#help-body');
+  body.textContent = '';
+  for (const text of [
+    T('Your serpent glides forward on its own. Steer with the pointer or with {left} and {right}; hold {boost} to boost. {pause} pauses.', {
+      left: keysOf('steer_left'), right: keysOf('steer_right'), boost: keysOf('boost'), pause: keysOf('pause'),
+    }),
+    T('Gather light motes to grow and score. The pale rim, the dark island and the red thorns all end your glide — unless the ruleset says otherwise.'),
+    T('Each mode states its goal: reach a length, beat a score, survive the clock or outlast your rivals.'),
+    T('In Practice, press {undo} (or Ctrl+Z) to rewind a bad moment. Undo is not available in ranked modes.', { undo: keysOf('undo') }),
+  ]) {
+    const p = document.createElement('p');
+    p.textContent = text;
+    body.appendChild(p);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -274,23 +300,23 @@ function updateHud() {
   const objEl = $('[data-sr-live="objective"]');
   const progEl = $('[data-sr-live="progress"]');
   const st = me && rules.getGoalStatus(cur.state, me.id);
-  objEl.textContent = cur.item.name + (cur.item.brief ? ' — ' + cur.item.brief : '');
+  objEl.textContent = itemName(cur.item) + (cur.item.brief ? ' — ' + itemBrief(cur.item) : '');
   const L = cur.lesson;
   if (L && me) {
     const steps = cur.item.steps;
     progEl.textContent = !me.alive
-      ? 'Down — press Play again to retry the lesson.'
+      ? T('Down — press Play again to retry the lesson.')
       : L.done
-        ? 'Lesson complete.'
-        : `Step ${L.index + 1} / ${steps.length} — ${steps[L.index].text}`;
+        ? T('Lesson complete.')
+        : T('Step {n} / {total} — {text}', { n: L.index + 1, total: steps.length, text: T(steps[L.index].text) });
     return;
   }
   if (st && st.goal) {
     progEl.textContent = me.alive
-      ? `Goal ${Math.min(st.current, st.target)} / ${st.target} · length ${meters(rules.trailLength(cur.state.ruleset, me))} m`
-      : 'Down — watch the rim, island and thorns.';
+      ? T('Goal {current} / {target} · length {len} m', { current: Math.min(st.current, st.target), target: st.target, len: meters(rules.trailLength(cur.state.ruleset, me)) })
+      : T('Down — watch the rim, island and thorns.');
   } else {
-    progEl.textContent = me && me.alive ? 'Glide on.' : 'Down.';
+    progEl.textContent = me && me.alive ? T('Glide on.') : T('Down.');
   }
 }
 
@@ -301,31 +327,58 @@ function finishIfTerminal() {
   cur.over = true;
   const me = human();
   const res = rules.makeResult(cur.state, me, 'local');
-  $('#res-headline').textContent = lessonDone ? 'Lesson complete!'
-    : res.goalMet ? 'Goal complete!' : 'Ring claimed you.';
+  const rec = platform.recordResult(cur.item, res);
+  cur.resultsView = { lessonDone, res, rec, reason: cur.state.terminal ? cur.state.terminal.reason : null };
+  renderResults();
+  showScreen('results');
+  const ranked = cur.item.kind === 'daily' || cur.item.kind === 'challenge';
+  postToLeaderboard(ranked ? Math.max(0, res.total) : null);
+}
+
+const BREAKDOWN = {
+  motes: N('Motes gathered'), mass: N('Mass consumed'), peak: N('Peak length'),
+  survival: N('Survival'), eliminations: N('Eliminations'), goal: N('Objective'),
+};
+const END_REASONS = {
+  'goal-reached': N('goal reached'), 'last-standing': N('last one standing'), 'time-up': N('time up'),
+  conceded: N('conceded'), collision: N('collision'),
+};
+
+/** Results screen texts (re-run on a language change). */
+function renderResults() {
+  const view = cur && cur.resultsView;
+  if (!view) return;
+  const { lessonDone, res, rec, reason } = view;
+  $('#res-headline').textContent = lessonDone ? T('Lesson complete!')
+    : res.goalMet ? T('Goal complete!') : T('Ring claimed you.');
   const bd = $('#score-breakdown');
   bd.innerHTML = '';
   const table = document.createElement('dl');
   table.className = 'sr-score';
   for (const row of res.breakdown || []) {
     const dt = document.createElement('dt');
-    dt.textContent = row.detail ? `${row.label} (${row.detail})` : row.label;
+    const label = BREAKDOWN[row.key] ? T(BREAKDOWN[row.key]) : row.label;
+    const detail = row.detail === 'complete' ? T('complete') : row.detail;
+    dt.textContent = detail ? `${label} (${detail})` : label;
     const dd = document.createElement('dd'); dd.textContent = String(row.amount);
     table.append(dt, dd);
   }
   const total = document.createElement('p');
-  total.textContent = `Total ${res.total} · peak length ${meters(res.peakTrail)} m · ticks ${res.elapsedTicks}`;
+  total.textContent = T('Total {total} · peak length {len} m · ticks {ticks}', { total: res.total, len: meters(res.peakTrail), ticks: res.elapsedTicks });
   bd.append(table, total);
   $('#res-note').textContent = lessonDone
-    ? `Ended: every step of ${cur.item.name} complete`
-    : cur.state.terminal ? `Ended: ${String(cur.state.terminal.reason).replace(/-/g, ' ')}` : '';
-  const rec = platform.recordResult(cur.item, res);
+    ? T('Ended: every step of {name} complete', { name: itemName(cur.item) })
+    : reason ? T('Ended: {reason}', { reason: END_REASONS[reason] ? T(END_REASONS[reason]) : String(reason).replace(/-/g, ' ') }) : '';
   $('#res-best').textContent = rec
-    ? `Best ${rec.best} · goal met ${rec.wins}/${rec.plays} · peak ${meters(rec.bestPeak)} m`
+    ? T('Best {best} · goal met {wins}/{plays} · peak {len} m', { best: rec.best, wins: rec.wins, plays: rec.plays, len: meters(rec.bestPeak) })
     : '';
-  showScreen('results');
-  const ranked = cur.item.kind === 'daily' || cur.item.kind === 'challenge';
-  postToLeaderboard(ranked ? Math.max(0, res.total) : null);
+  if (cur.lb) $('#res-lb').textContent = lbText(cur.lb);
+}
+
+function lbText(lb) {
+  if (lb.state === 'posting') return shText('lbPosting');
+  if (lb.state === 'failed') return shText('lbNotPosted');
+  return lb.rank ? shText('lbRank', { rank: lb.rank }) : shText('lbPosted');
 }
 
 // Signed in only: post a ranked round (Daily Challenge, Challenges) to the
@@ -334,12 +387,13 @@ function postToLeaderboard(total) {
   const line = $('#res-lb');
   if (total == null || !platform.isHosted()) { line.hidden = true; return; }
   line.hidden = false;
-  line.textContent = shText('lbPosting');
   const round = cur;
+  round.lb = { state: 'posting' };
+  line.textContent = lbText(round.lb);
   platform.submitScore(total).then((r) => {
+    round.lb = !r.posted ? { state: 'failed' } : { state: 'posted', rank: r.rank || null };
     if (cur !== round) return;
-    line.textContent = !r.posted ? shText('lbNotPosted')
-      : r.rank ? shText('lbRank', { rank: r.rank }) : shText('lbPosted');
+    line.textContent = lbText(round.lb);
   });
 }
 
@@ -470,7 +524,7 @@ document.addEventListener('click', (e) => {
   const nav = el.getAttribute && el.getAttribute('data-sr-nav');
   if (nav === 'daily-setup' || nav === 'daily') {
     dailyItem = content.dailyContent();
-    $('#daily-brief').textContent = `${dailyItem.name}. ${dailyItem.brief}`;
+    renderDailyBrief();
   }
   if (nav === 'play-daily') startLevel(content.dailyContent());
   else if (nav === 'retry' && cur) startLevel(cur.item);
@@ -507,9 +561,14 @@ function audioLevels() {
   return { music: v('music'), sfx: v('sfx') };
 }
 
-async function initAccount() {
+function renderAccountText() {
   $('#btn-signin').textContent = shText('signIn');
   $('#btn-invite').textContent = shText('invite');
+}
+
+async function initAccount() {
+  renderAccountText();
+  platform.onSaveConflict(() => { if (cur && cur.resultsView) renderResults(); });
   $('#btn-signin').addEventListener('click', () => platform.signIn());
   $('#btn-invite').addEventListener('click', async () => {
     const url = platform.inviteLink();
@@ -543,9 +602,20 @@ setInterval(() => {
   if (el) el.textContent = new Date().toISOString().slice(11, 19) + ' UTC';
 }, 1000);
 
+// Language first (sh-language.js: Language setting → account preference → browser),
+// then a change re-renders every text built in code, in place.
+initLanguage();
+onLanguage((locale) => {
+  graphics.setLocale(locale);
+  populate();
+  renderAccountText();
+  platform.relabel();
+  if (cur) updateHud();
+  if (cur && cur.resultsView) renderResults();
+});
 populate();
 graphics.onChange(() => resizeCanvas());
-graphics.initGraphics();
+graphics.initGraphics(getLang());
 platform.init();
 platform.loadSave();
 initUI();

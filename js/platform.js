@@ -13,6 +13,8 @@
  * client is a solo game.
  */
 
+import { T } from './i18n.js';
+
 const LOCAL_KEY = 'serpent-ring:save:v1';
 const SAVE_DEBOUNCE_MS = 2000;
 
@@ -46,14 +48,46 @@ let bindings = JSON.parse(JSON.stringify(DEFAULT_BINDINGS));
 async function loadProfile() {
   if (!state.hosted) return;
   const p = await SH().profile().catch(() => null);
-  state.nickname = p ? p.displayName : 'Player ' + String(SH().userId).slice(0, 8);
+  state.nickname = p ? p.displayName : T('Player {id}', { id: String(SH().userId).slice(0, 8) });
   renderProfile();
 }
 
 /* ------------------------------------------------------------------ *
- *  Cloud save: the SDK slot (game:<slug>), remote-preferred load,
- *  localStorage is the offline cache. Debounced writes, pagehide flush.
+ *  Cloud save: the SDK slot (game:<slug>), merged with the local copy on
+ *  load (mergeDocs: nothing is dropped); localStorage is the offline cache.
+ *  Debounced writes, pagehide flush. Writes after a load are conditional
+ *  (SDK ETag): a write that loses to another device emits 'saveconflict';
+ *  the slot is reloaded, merged and saved again.
  * ------------------------------------------------------------------ */
+
+/** Per level the better of both records: most plays and wins, best score and peak. */
+export function mergeDocs(a, b) {
+  const out = { version: 1, records: {} };
+  const ra = (a && a.records) || {}, rb = (b && b.records) || {};
+  const n = (v) => (Number.isFinite(v) ? v : 0);
+  for (const id of new Set([...Object.keys(ra), ...Object.keys(rb)])) {
+    const x = ra[id] || {}, y = rb[id] || {};
+    out.records[id] = {
+      plays: Math.max(n(x.plays), n(y.plays)), wins: Math.max(n(x.wins), n(y.wins)),
+      best: Math.max(n(x.best), n(y.best)), bestPeak: Math.max(n(x.bestPeak), n(y.bestPeak)),
+    };
+  }
+  return out;
+}
+const validDoc = (d) => !!(d && d.version === 1 && d.records && typeof d.records === 'object');
+let conflictCb = null;
+/** cb() after a save conflict was merged (the records may have changed). */
+export function onSaveConflict(cb) { conflictCb = cb; }
+
+async function resolveConflict() {
+  if (!state.hosted) return;
+  setSync('saving');
+  const remote = await SH().loadJSON().catch(() => null);
+  if (validDoc(remote)) doc = mergeDocs(doc, remote);
+  writeLocalDoc();
+  if (!SH().saveConflicted()) SH().saveJSON(doc, 0);
+  if (conflictCb) conflictCb();
+}
 
 function readLocalDoc() {
   try {
@@ -79,9 +113,12 @@ async function loadDoc() {
   doc = readLocalDoc();
   if (!state.hosted) return doc;
   const remote = await SH().loadJSON();
-  if (remote && remote.version === 1 && remote.records && typeof remote.records === 'object') {
-    doc = remote; // remote wins on conflict
+  if (validDoc(remote)) {
+    const merged = mergeDocs(doc, remote);
+    doc = merged;
     writeLocalDoc();
+    // Local progress the cloud lacks goes back up.
+    if (JSON.stringify(merged) !== JSON.stringify(mergeDocs(remote, { records: {} }))) SH().saveJSON(doc, 0);
   } else if (Object.keys(doc.records).length) {
     SH().saveJSON(doc, 0); // empty slot: seed it from the local copy
   }
@@ -117,7 +154,7 @@ function renderProfile() {
 function renderSync() {
   const el = typeof document !== 'undefined' && document.querySelector('[data-sr-live="sync"]');
   if (!el) return;
-  el.textContent = state.sync === 'synced' ? 'synced' : state.sync === 'saving' ? 'saving…' : 'offline';
+  el.textContent = state.sync === 'synced' ? T('synced') : state.sync === 'saving' ? T('saving…') : T('offline');
   el.setAttribute('data-sync', state.sync);
 }
 
@@ -132,6 +169,7 @@ export function init() {
     sh.init();
     state.hosted = sh.signedIn;
     sh.on('saved', (ok) => setSync(ok ? 'synced' : 'offline'));
+    sh.on('saveconflict', () => { resolveConflict(); });
     sh.on('auth', (a) => {
       state.hosted = !!a.signedIn;
       if (!a.signedIn) { state.nickname = null; setSync('offline'); renderProfile(); }
@@ -148,6 +186,8 @@ export function init() {
 }
 
 export function isHosted() { return state.hosted; }
+/** Language change: re-render the sync chip. */
+export function relabel() { renderSync(); }
 
 /** Post a finished ranked round to the `high-score` board through the game's
  *  score-script.js (StarHermit.submitScores) → { posted, rank }. */
@@ -169,7 +209,7 @@ export function inviteLink() { return state.hosted ? SH().inviteLink() : null; }
 /** cb(signedIn) when the session signs in/out (renewal refused). */
 export function onAuth(cb) { authCb = cb; }
 
-/** Load the save doc: cloud when hosted (remote wins), else local cache. */
+/** Load the save doc: cloud merged with the local cache when hosted, else the local cache. */
 export function loadSave() {
   if (state.hosted && !state.nickname) loadProfile();
   return loadDoc();

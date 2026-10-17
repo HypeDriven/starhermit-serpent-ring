@@ -47,6 +47,7 @@ import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { stubStarHermit, launchToken } from './starhermit-e2e.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SHOT = (stage, vp) => `/tmp/serpent-ring-e2e-${stage}-${vp}.png`;
@@ -410,6 +411,79 @@ async function graphicsPass(browser, name, ctxOpts) {
   console.log(`ok - ${name}: graphics pass has no console errors or warnings`);
 }
 
+
+// ---------- language + report (signed in through a stubbed StarHermit API) ----------
+// Automatic follows the account's preferred language (fr-CA); choosing Italian in
+// Graphics → Language mid-round (opened from the pause menu) re-renders the HUD,
+// menus and panel in place and saves ui.language; Report a problem posts to
+// /reports. Real clicks/taps only; any console error or warning fails.
+async function languagePass(browser, name, ctxOpts, touch) {
+  const errors = [];
+  const context = await browser.newContext(ctxOpts);
+  const page = await context.newPage();
+  page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
+  page.on('console', (m) => {
+    if ((m.type() !== 'error' && m.type() !== 'warning') || browserNoise.test(m.text())) return;
+    errors.push(`console ${m.type()}: ${m.text()}`);
+  });
+  const press = (loc) => (touch ? loc.tap() : loc.click());
+  const text = async (sel) => ((await page.locator(sel).first().textContent()) || '').trim();
+  try {
+    const calls = await stubStarHermit(page, { preferredLanguage: 'fr-CA' });
+    await page.goto('about:blank');
+    await page.goto(`${BASE}/index.html#game_token=${launchToken()}`, { waitUntil: 'load' });
+    await page.waitForSelector('[data-sr-screen="title"]:not([hidden])');
+    await page.waitForFunction(() => document.documentElement.lang === 'fr-CA', null, { timeout: 10000 });
+    if (await text('#btn-play') !== 'Jouer') throw new Error('title not in French');
+    await press(page.locator('#btn-play'));
+    await press(page.locator('#mode-list .sr-mode-card').nth(1)); // Journey
+    await page.waitForSelector('[data-sr-screen="journey-setup"]:not([hidden])');
+    await press(page.locator('#chapter-list .sr-blockbtn').first());
+    await page.waitForSelector('[data-sr-screen="play"]:not([hidden])');
+    await press(page.locator('#btn-pause'));
+    await page.waitForSelector('[data-sr-screen="pause"]:not([hidden])');
+    await press(page.locator('#btn-pause-gfx'));
+    await page.waitForSelector('[data-sr-screen="graphics"]:not([hidden])');
+    const choice = page.locator('#gfx-panel [data-game-language="choice"]');
+    await choice.scrollIntoViewIfNeeded();
+    const auto = ((await choice.locator('option').first().textContent()) || '').trim();
+    if (auto !== 'Automatique — Français (Canada)') throw new Error(`Automatic label not resolved: ${auto}`);
+    await choice.selectOption('it-IT');
+    await page.waitForFunction(() => document.documentElement.lang === 'it-IT');
+    await page.waitForFunction(() => /Salvato/.test(document.querySelector('[data-game-language="status"]').textContent));
+    if (calls.settings['ui.language']?.choice !== 'it-IT') throw new Error('ui.language not saved: ' + JSON.stringify(calls.settings));
+    if (await text('#gfx-title') !== 'Grafica') throw new Error('graphics panel not re-rendered');
+    if (await text('label[for="gfx-preset"]') !== 'Qualità') throw new Error('graphics labels not re-rendered');
+    if (!/Prima luce/.test(await text('[data-sr-live="objective"]'))) throw new Error('HUD not re-rendered');
+    if (await text('[data-sr-screen="pause"] h2') !== 'In pausa') throw new Error('pause menu not re-rendered');
+    if (!/Prima luce/.test(await text('#chapter-list .sr-blockbtn'))) throw new Error('journey list not re-rendered');
+    const title = page.locator('[data-game-report="title"]');
+    await title.scrollIntoViewIfNeeded();
+    await title.fill('Test report');
+    await press(page.locator('[data-game-report="send"]'));
+    await page.waitForFunction(() => /Grazie/.test(document.querySelector('[data-game-report="status"]').textContent));
+    if (!calls.reports?.[0] || calls.reports[0].kind !== 'bug') throw new Error('report not posted');
+    const vw = page.viewportSize().width;
+    for (const sel of ['[data-game-language="choice"]', '[data-game-report="send"]', '#btn-gfx-close']) {
+      const b = await page.locator(sel).first().boundingBox();
+      if (!b || b.x < 0 || b.x + b.width > vw + 1) throw new Error(`${sel} cut off horizontally`);
+    }
+    await page.screenshot({ path: SHOT('language', name), fullPage: true });
+    await choice.selectOption('auto');
+    await page.waitForFunction(() => document.documentElement.lang === 'fr-CA');
+    await press(page.locator('#btn-gfx-close'));
+    await page.waitForSelector('[data-sr-screen="pause"]:not([hidden])');
+    if (await text('#btn-resume') !== 'Reprendre') throw new Error('pause menu not in French');
+    await press(page.locator('#btn-resume'));
+    await page.waitForSelector('[data-sr-screen="play"]:not([hidden])');
+    await page.unroute(/\/api\/v1\//);
+  } finally {
+    await context.close();
+  }
+  if (errors.length) throw new Error(`${name} language pass had console output:\n  ${errors.join('\n  ')}`);
+  ok(`${name}: language — Automatic → fr-CA, Italian mid-round re-renders HUD/menus/panel, ui.language saved, report posted`);
+}
+
 // ---------- main ----------
 let browser = null;
 try {
@@ -423,6 +497,8 @@ try {
     { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, { full: false });
   await graphicsPass(browser, 'desktop', { viewport: { width: 1280, height: 800 } });
   await graphicsPass(browser, 'mobile', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  await languagePass(browser, 'desktop', { viewport: { width: 1280, height: 800 } }, false);
+  await languagePass(browser, 'mobile', { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true }, true);
   console.log('\nE2E PASS — serpent-ring, desktop + mobile, no page errors');
 } catch (e) {
   failures++;
