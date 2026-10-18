@@ -1,6 +1,6 @@
 /**
  * Serpent Ring — graphics quality model: presets, per-category overrides,
- * GPU detection and a cost summary. Pure (no DOM, no canvas) so the settings
+ * StarHermit hardware-level detection, per-preset budgets and a cost summary. Pure (no DOM, no canvas) so the settings
  * panel, the renderer and the unit tests agree on what a setting means.
  */
 
@@ -25,26 +25,74 @@ const TABLE = {
   ultra: { scale: 1.25, dprCap: 2, glow: 'high', shadows: 'on', grade: 'on', particles: 'high', background: 'animated', detail: 'detailed' },
 };
 
-/** Particle budget per tier. */
-export const PARTICLE_CAP = { off: 0, low: 140, high: 420 };
+// Auto picks the preset from the StarHermit hardware level (0 = Galaxy S20 / Intel UHD or weaker, 20 = RTX
+// 5090; js/gpu-level.js → window.StarHermitGpu, a classic script loaded before the game): Low from 0,
+// Balanced from 4, High from 10, Ultra from 17. Phones, tablets and ≤ 4 GB machines are capped at level 9.
+export const LEVELS = { low: 0, balanced: 4, high: 10, ultra: 17 };
+const gpuApi = () => globalThis.StarHermitGpu;
 
-/** Best preset for this GPU, from the unmasked renderer string when the browser exposes it. */
-export function detectPreset(gpu, { mobile = false } = {}) {
-  const g = String(gpu || '').toLowerCase();
-  let p = 'balanced';
-  if (!g) p = 'balanced';
-  else if (/swiftshader|llvmpipe|softpipe|software|basic render|microsoft basic/.test(g)) p = 'low';
-  else if (/nvidia|geforce|rtx|gtx|quadro|radeon rx|radeon pro|amd radeon(?!.*graphics)|apple m\d/.test(g)) p = 'high';
-  // Touch / mobile devices: Auto never goes above Balanced.
-  if (mobile && PRESETS.indexOf(p) > PRESETS.indexOf('balanced')) p = 'balanced';
-  return p;
+/** Hardware level 0–20 for an unmasked renderer string plus StarHermitGpu.detectSystem() facts. */
+export function detectLevel(gpu, system) {
+  const G = gpuApi();
+  const sys = { webgl: true, webgl2: true, ...(system || {}), gpu: String(gpu || '') };
+  if (!gpu) sys.webgl = false; // no renderer string: no usable WebGL
+  return G ? G.detectLevel(sys) : (gpu ? LEVELS.balanced : 0);
+}
+
+/** The preset Auto starts from for a hardware level. */
+export function presetForLevel(level) {
+  const G = gpuApi();
+  return G ? G.presetForLevel(level, LEVELS) : PRESETS.filter((p) => LEVELS[p] <= level).pop() || 'low';
+}
+
+/** Best preset for this GPU (the hardware level already caps phones and tablets at Balanced). */
+export function detectPreset(gpu, system) {
+  return presetForLevel(detectLevel(gpu, system));
+}
+
+/*
+ * Per-preset 2D-canvas budget. Each preset holds 60 FPS on the weakest GPU Auto gives it (Low → level 0,
+ * Balanced → 4, High → 10, Ultra → 17; measured with tests/gfx-bench.mjs). The arena, serpents, motes,
+ * thorns, hit tests and rules are identical on every preset — only visuals change.
+ *   particles  particle cap at Particles "high" (low: 1/3), scaled with the level
+ *   spores     drifting spores (Background animated), scaled with the level
+ *   fronds     foliage fronds around the rim (Detail on; cached backdrop)
+ *   specks     moss specks on the floor per 720² px (Detail on; cached backdrop)
+ *   samples    trail sample points per serpent body (Detail on)
+ *   chunks     tapered stroke segments per body pass (Detail on)
+ *   haloRings  additive rings per ambient-mote halo (Glow on)
+ */
+export const BUDGETS = {
+  low: { particles: 150, spores: 20, fronds: 32, specks: 400, samples: 60, chunks: 6, haloRings: 2 },
+  balanced: { particles: 300, spores: 30, fronds: 48, specks: 600, samples: 72, chunks: 8, haloRings: 2 },
+  high: { particles: 420, spores: 46, fronds: 64, specks: 900, samples: 90, chunks: 12, haloRings: 3 },
+  ultra: { particles: 600, spores: 70, fronds: 96, specks: 1400, samples: 120, chunks: 16, haloRings: 3 },
+};
+export const PARTICLE_MAX = 1200;
+export const SPORE_MAX = 140;
+const PARTICLE_SHARE = { off: 0, low: 1 / 3, high: 1 };
+
+/** A preset's concrete budget for a hardware level (particle and spore counts scale ≤ 2× within the preset). */
+export function budgetFor(preset, level) {
+  const b = { ...(BUDGETS[preset] || BUDGETS.balanced) };
+  const G = gpuApi(), floor = LEVELS[preset] || 0;
+  const lv = Math.max(Number.isFinite(level) ? level : floor, floor);
+  const k = G ? Math.min(2, G.scaleBudget(1, lv, floor)) : 1;
+  b.particles = Math.min(PARTICLE_MAX, Math.round(b.particles * k));
+  b.spores = Math.min(SPORE_MAX, Math.round(b.spores * k));
+  return b;
+}
+
+/** Live particle cap for a resolved setting (Particles tier share of the preset's budget). */
+export function particleCap(r) {
+  return Math.round(((r && r.budget) || BUDGETS.balanced).particles * (PARTICLE_SHARE[r && r.particles] ?? 0));
 }
 
 /**
  * Resolve saved settings into concrete tiers.
  * `saved`: { preset: 'auto'|preset, render_scale, adaptive, show_fps, <category>: 'preset'|tier }.
  */
-export function resolve(saved, detected) {
+export function resolve(saved, detected, level) {
   const s = saved || {};
   const auto = !PRESETS.includes(s.preset);
   const preset = auto ? (PRESETS.includes(detected) ? detected : 'balanced') : s.preset;
@@ -54,6 +102,8 @@ export function resolve(saved, detected) {
   for (const [cat, tiers] of Object.entries(CATEGORIES)) {
     out[cat] = tiers.includes(s[cat]) ? s[cat] : row[cat];
   }
+  out.level = Number.isFinite(level) ? level : LEVELS[preset];
+  out.budget = budgetFor(preset, out.level);
   out.adaptive = s.adaptive !== false;
   out.showFps = !!s.show_fps;
   // The effect passes run only when something needs them; otherwise the plain renderer draws.
@@ -94,7 +144,7 @@ export function describe(r, pixels, t) {
     r.glow === 'off' ? null : r.glow === 'high' ? tr('glowHigh') : tr('glow'),
     r.shadows === 'on' ? tr('shadows') : null,
     r.grade === 'on' ? tr('grade') : null,
-    r.particles === 'off' ? null : tr('particles', PARTICLE_CAP[r.particles]),
+    r.particles === 'off' ? null : tr('particles', particleCap(r)),
     r.background === 'animated' ? tr('animated') : null,
   ] : [tr('plain')];
   if (pixels) parts.push(`${pixels[0]}×${pixels[1]} px`);

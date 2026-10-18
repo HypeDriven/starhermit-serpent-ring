@@ -1,5 +1,5 @@
 /**
- * Serpent Ring — Graphics settings: persistence, GPU detection, the Graphics
+ * Serpent Ring — Graphics settings: persistence, hardware-level detection, the Graphics
  * panel (title menu and pause menu), adaptive resolution and the frame-rate
  * readout. The quality model itself lives in gfx.js; drawing in render.js.
  */
@@ -24,7 +24,7 @@ const L = {
     t_plain: 'Plain', t_detailed: 'Detailed',
     adaptive: 'Adaptive resolution', fps: 'Show frame rate', back: 'Back',
     note: 'Visual effects could not be drawn on this device; the plain view is shown instead.',
-    unknownGpu: 'Unknown GPU',
+    unknownGpu: 'Unknown GPU', level: 'Level {n}',
     s_plain: 'plain drawing', s_glow: 'glow', s_glowHigh: 'full glow', s_shadows: 'shadows',
     s_grade: 'color grade', s_particles: '{n} particles', s_animated: 'animated backdrop', s_detailed: 'detailed',
   },
@@ -41,7 +41,7 @@ const L = {
     t_plain: 'Simple', t_detailed: 'Detallado',
     adaptive: 'Resolución adaptable', fps: 'Mostrar cuadros por segundo', back: 'Volver',
     note: 'No se pudieron dibujar los efectos visuales en este dispositivo; se muestra la vista simple.',
-    unknownGpu: 'GPU desconocida',
+    unknownGpu: 'GPU desconocida', level: 'Nivel {n}',
     s_plain: 'dibujo simple', s_glow: 'resplandor', s_glowHigh: 'resplandor completo', s_shadows: 'sombras',
     s_grade: 'gradación de color', s_particles: '{n} partículas', s_animated: 'fondo animado', s_detailed: 'detallado',
   },
@@ -59,7 +59,7 @@ const L = {
     t_plain: 'Schlicht', t_detailed: 'Detailliert',
     adaptive: 'Adaptive Auflösung', fps: 'Bildrate anzeigen', back: 'Zurück',
     note: 'Visuelle Effekte konnten auf diesem Gerät nicht gezeichnet werden; die schlichte Ansicht wird gezeigt.',
-    unknownGpu: 'Unbekannte GPU',
+    unknownGpu: 'Unbekannte GPU', level: 'Stufe {n}',
     s_plain: 'schlichte Darstellung', s_glow: 'Leuchten', s_glowHigh: 'volles Leuchten', s_shadows: 'Schatten',
     s_grade: 'Farbkorrektur', s_particles: '{n} Partikel', s_animated: 'animierter Hintergrund', s_detailed: 'detailliert',
   },
@@ -73,7 +73,7 @@ const L = {
     t_plain: 'Simple', t_detailed: 'Détaillé',
     adaptive: 'Résolution adaptative', fps: 'Afficher les images par seconde', back: 'Retour',
     note: 'Les effets visuels n’ont pas pu être dessinés sur cet appareil ; la vue simple est affichée.',
-    unknownGpu: 'GPU inconnu',
+    unknownGpu: 'GPU inconnu', level: 'Niveau {n}',
     s_plain: 'rendu simple', s_glow: 'lueur', s_glowHigh: 'lueur complète', s_shadows: 'ombres',
     s_grade: 'étalonnage', s_particles: '{n} particules', s_animated: 'arrière-plan animé', s_detailed: 'détaillé',
   },
@@ -90,7 +90,7 @@ const L = {
     t_plain: 'Simples', t_detailed: 'Detalhado',
     adaptive: 'Resolução adaptável', fps: 'Mostrar taxa de quadros', back: 'Voltar',
     note: 'Não foi possível desenhar os efeitos visuais neste dispositivo; a visão simples é exibida.',
-    unknownGpu: 'GPU desconhecida',
+    unknownGpu: 'GPU desconhecida', level: 'Nível {n}',
     s_plain: 'desenho simples', s_glow: 'brilho', s_glowHigh: 'brilho total', s_shadows: 'sombras',
     s_grade: 'correção de cor', s_particles: '{n} partículas', s_animated: 'fundo animado', s_detailed: 'detalhado',
   },
@@ -104,7 +104,7 @@ const L = {
     t_plain: 'Semplice', t_detailed: 'Dettagliato',
     adaptive: 'Risoluzione adattiva', fps: 'Mostra frame rate', back: 'Indietro',
     note: 'Non è stato possibile disegnare gli effetti visivi su questo dispositivo; viene mostrata la vista semplice.',
-    unknownGpu: 'GPU sconosciuta',
+    unknownGpu: 'GPU sconosciuta', level: 'Livello {n}',
     s_plain: 'disegno semplice', s_glow: 'bagliore', s_glowHigh: 'bagliore pieno', s_shadows: 'ombre',
     s_grade: 'correzione colore', s_particles: '{n} particelle', s_animated: 'sfondo animato', s_detailed: 'dettagliato',
   },
@@ -142,6 +142,7 @@ const fmt = (s, v) => String(s).replace(/\{(\w+)\}/g, (_, k) => (v[k] ?? ''));
 let saved = {};
 let gpu = '';
 let detected = 'balanced';
+let level = gfx.LEVELS.balanced;
 let resolved = gfx.resolve({}, 'balanced');
 let adaptiveScale = 1;
 const listeners = [];
@@ -154,19 +155,28 @@ function persist() {
 }
 
 function detectGpu() {
+  // StarHermit hardware level (js/gpu-level.js, window.StarHermitGpu): one probe context for the
+  // renderer string plus device facts (phone/tablet, cores, memory, screen).
+  const G = window.StarHermitGpu;
+  if (G) {
+    try {
+      const sys = G.detectSystem();
+      const level = G.detectLevel(sys);
+      return { name: sys.gpu, level, preset: gfx.presetForLevel(level) };
+    } catch { /* fall through to the plain probe */ }
+  }
   let name = '';
   try {
     const c = document.createElement('canvas');
     const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
-    if (!gl) return { name: '', preset: 'low' };
-    const ext = gl.getExtension('WEBGL_debug_renderer_info');
-    name = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
-    const lose = gl.getExtension('WEBGL_lose_context');
-    if (lose) lose.loseContext();
-  } catch { /* no WebGL: treat as a weak device */ return { name: '', preset: 'low' }; }
-  const mobile = (typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches)
-    || /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent || '');
-  return { name, preset: gfx.detectPreset(name, { mobile }) };
+    if (gl) {
+      const ext = gl.getExtension('WEBGL_debug_renderer_info');
+      name = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) || '');
+      gl.getExtension('WEBGL_lose_context')?.loseContext();
+    }
+  } catch { /* no WebGL: treat as a weak device */ }
+  const level = gfx.detectLevel(name);
+  return { name, level, preset: gfx.presetForLevel(level) };
 }
 
 /** Canvas backing-store pixels per CSS pixel for the current settings. */
@@ -189,7 +199,7 @@ export function setSaved(next) {
 }
 
 function apply() {
-  resolved = gfx.resolve(saved, detected);
+  resolved = gfx.resolve(saved, detected, level);
   if (!resolved.adaptive) adaptiveScale = 1;
   setGraphics(resolved);
   document.body.dataset.gfxPreset = resolved.preset;
@@ -331,7 +341,7 @@ function syncPanel() {
   $('#gfx-adaptive').checked = resolved.adaptive;
   $('#gfx-showfps').checked = resolved.showFps;
   const cost = gfx.describe(resolved, playfieldPixels(), (k) => S['s_' + k]);
-  $('#gfx-summary').textContent = `${gpu || S.unknownGpu} · ${cost}`;
+  $('#gfx-summary').textContent = `${gpu || S.unknownGpu} · ${fmt(S.level, { n: level })} · ${cost}`;
   const note = $('#gfx-note');
   note.hidden = !effectsFailed();
   note.textContent = S.note;
@@ -389,6 +399,7 @@ export function initGraphics(locale = 'en-US') {
   const d = detectGpu();
   gpu = d.name;
   detected = d.preset;
+  level = d.level;
   buildPanel();
   labelButtons();
   $('#btn-gfx-open')?.addEventListener('click', (e) => open('title', e.currentTarget));

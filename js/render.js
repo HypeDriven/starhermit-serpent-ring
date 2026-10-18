@@ -10,7 +10,7 @@
  * draws exactly the plain baseline. Gameplay colours (the pale player with a
  * pure-white head, rival hues, mote colours, red thorns) are never graded.
  */
-import { PARTICLE_CAP } from './gfx.js';
+import { particleCap as budgetParticles, BUDGETS } from './gfx.js';
 
 const FALLBACK_THEME = {
   sky: 0x0a0f18, floor: 0x101b2a, island: 0x0d1524,
@@ -26,7 +26,7 @@ const rgba = (hex, a) => `rgba(${(hex >> 16) & 255},${(hex >> 8) & 255},${hex & 
  *  Settings
  * ------------------------------------------------------------------ */
 
-let G = { glow: 'off', shadows: 'off', grade: 'off', particles: 'off', background: 'static', detail: 'plain', effects: false };
+let G = { glow: 'off', shadows: 'off', grade: 'off', particles: 'off', background: 'static', detail: 'plain', effects: false, budget: BUDGETS.low };
 let failed = false;
 const reducedMq = typeof matchMedia === 'function' ? matchMedia('(prefers-reduced-motion: reduce)') : null;
 const reducedMotion = () => !!(reducedMq && reducedMq.matches);
@@ -42,7 +42,9 @@ export function setGraphics(r) {
 /** True when an effect pass threw and the renderer fell back to the plain view. */
 export function effectsFailed() { return failed; }
 
-const particleCap = () => (reducedMotion() ? 0 : PARTICLE_CAP[G.particles] || 0);
+const particleCap = () => (reducedMotion() ? 0 : budgetParticles(G));
+// The preset's budget (gfx.js BUDGETS / budgetFor): spores, foliage, specks, body samples and chunks.
+const B = () => G.budget || BUDGETS.balanced;
 const animated = () => G.background === 'animated' && !reducedMotion();
 
 /* ------------------------------------------------------------------ *
@@ -80,11 +82,17 @@ function renderPlain(ctx, w, h, state, T) {
     ctx.fill();
   }
 
-  for (const m of state.motes) {
-    const r = m.bloom ? 5 : 3;
+  // Motes: one path per colour (same pixels as one fill per mote, a fraction of the calls).
+  for (const bloom of [false, true]) {
+    const r = bloom ? 5 : 3;
     ctx.beginPath();
-    ctx.arc(cx + m.x * scale, cy - m.y * scale, r, 0, Math.PI * 2);
-    ctx.fillStyle = m.bloom ? css(T.moteBloom) : css(T.mote);
+    for (const m of state.motes) {
+      if (!!m.bloom !== bloom) continue;
+      const x = cx + m.x * scale, y = cy - m.y * scale;
+      ctx.moveTo(x + r, y);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = bloom ? css(T.moteBloom) : css(T.mote);
     ctx.fill();
   }
 
@@ -96,12 +104,15 @@ function renderPlain(ctx, w, h, state, T) {
     const trailColor = mine ? '#e8f4ff' : `hsl(${s.hue}, 70%, 62%)`;
     const headColor = mine ? '#ffffff' : `hsl(${s.hue}, 80%, 72%)`;
     const tr = s.trail;
+    const dot = s.boostOn ? 4 : 3;
+    ctx.beginPath();
     for (let i = tr.length - 1; i >= 0; i -= Math.max(1, Math.floor(tr.length / 60))) {
-      ctx.beginPath();
-      ctx.arc(cx + tr[i].x * scale, cy - tr[i].y * scale, s.boostOn ? 4 : 3, 0, Math.PI * 2);
-      ctx.fillStyle = trailColor;
-      ctx.fill();
+      const x = cx + tr[i].x * scale, y = cy - tr[i].y * scale;
+      ctx.moveTo(x + dot, y);
+      ctx.arc(x, y, dot, 0, Math.PI * 2);
     }
+    ctx.fillStyle = trailColor;
+    ctx.fill();
     const hx = cx + s.x * scale, hy = cy - s.y * scale;
     if (mine) {
       ctx.beginPath();
@@ -143,7 +154,7 @@ function makeCanvas(w, h) {
 }
 
 function backdrop(w, h, state, T, themeKey) {
-  const key = [w, h, themeKey, state.arena.outer, state.arena.inner, G.detail, G.grade, G.glow].join('|');
+  const key = [w, h, themeKey, state.arena.outer, state.arena.inner, G.detail, G.grade, G.glow, B().fronds, B().specks].join('|');
   if (envCache && envCache.key === key) return envCache.canvas;
   const c = makeCanvas(w, h);
   const g = c.getContext('2d');
@@ -166,7 +177,7 @@ function backdrop(w, h, state, T, themeKey) {
   if (detailed) {
     // Foliage: fronds rooted just outside the rim, leaning outwards, so no
     // decoration ever overlaps the playfield.
-    const n = 64;
+    const n = B().fronds;
     for (let i = 0; i < n; i++) {
       const a = (i / n) * Math.PI * 2 + hash01(i * 7 + 1) * 0.08;
       const len = R * (0.07 + hash01(i * 13 + 5) * 0.12);
@@ -219,7 +230,7 @@ function backdrop(w, h, state, T, themeKey) {
       g.arc(cx, cy, rr, 0, Math.PI * 2);
       g.stroke();
     }
-    const specks = Math.round(900 * u * u);
+    const specks = Math.round(B().specks * u * u);
     for (let i = 0; i < specks; i++) {
       const a = hash01(i * 2 + 11) * Math.PI * 2;
       const rr = Ri + Math.sqrt(hash01(i * 2 + 12)) * (R - Ri);
@@ -455,7 +466,7 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
   if (animated()) {
     const R = state.arena.outer * scale;
     ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 46; i++) {
+    for (let i = 0, n = B().spores; i < n; i++) {
       const a = hash01(i * 3 + 1) * Math.PI * 2 + t * (0.02 + hash01(i) * 0.04) * (i % 2 ? 1 : -1);
       const rr = R * (0.2 + hash01(i * 3 + 2) * 1.1) + Math.sin(t * 0.7 + i) * 6 * u;
       const tw = 0.25 + 0.25 * Math.sin(t * (1 + hash01(i * 5)) * 2 + i);
@@ -508,20 +519,42 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
   const moteC = css(T.mote), bloomC = css(T.moteBloom);
   if (glow) {
     ctx.globalCompositeOperation = 'lighter';
-    const sm = glowSprite(rgba(T.mote, 0.5)), sb = glowSprite(rgba(T.moteBloom, 0.7));
+    // Ambient motes (hundreds): the soft halo is a few concentric additive rings, each ring of every
+    // mote in one path — a handful of fills instead of a sprite blit per mote. Bloom motes (few)
+    // keep their pulsing gradient sprite.
+    const rings = B().haloRings;
+    const hr = 6 * u;
+    for (let k = 1; k <= rings; k++) {
+      const rr = hr * (k / rings);
+      ctx.beginPath();
+      for (const m of state.motes) {
+        if (m.bloom) continue;
+        const x = X(m.x), y = Y(m.y);
+        ctx.moveTo(x + rr, y);
+        ctx.arc(x, y, rr, 0, Math.PI * 2);
+      }
+      ctx.fillStyle = rgba(T.mote, 0.3 / rings);
+      ctx.fill();
+    }
+    const sb = glowSprite(rgba(T.moteBloom, 0.7));
     for (const m of state.motes) {
-      const pulse = m.bloom ? 1 + 0.18 * Math.sin(t * 3 + m.x * 0.001) : 1;
-      const s = (m.bloom ? 26 : 12) * u * pulse;
-      ctx.drawImage(m.bloom ? sb : sm, X(m.x) - s / 2, Y(m.y) - s / 2, s, s);
+      if (!m.bloom) continue;
+      const s = 26 * u * (1 + 0.18 * Math.sin(t * 3 + m.x * 0.001));
+      ctx.drawImage(sb, X(m.x) - s / 2, Y(m.y) - s / 2, s, s);
     }
     ctx.globalCompositeOperation = 'source-over';
   }
   const mu = detailed ? Math.max(1, u) : 1;
-  for (const m of state.motes) {
-    const r = (m.bloom ? 5 : 3) * mu;
+  for (const bloom of [false, true]) {
+    const r = (bloom ? 5 : 3) * mu;
     ctx.beginPath();
-    ctx.arc(X(m.x), Y(m.y), r, 0, Math.PI * 2);
-    ctx.fillStyle = m.bloom ? bloomC : moteC;
+    for (const m of state.motes) {
+      if (!!m.bloom !== bloom) continue;
+      const x = X(m.x), y = Y(m.y);
+      ctx.moveTo(x + r, y);
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+    }
+    ctx.fillStyle = bloom ? bloomC : moteC;
     ctx.fill();
   }
 
@@ -529,7 +562,7 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
   const bodyR = (state.ruleset && state.ruleset.serpent && state.ruleset.serpent.bodyRadius) || 200;
   const live = state.serpents.filter((s) => s.alive || s.boostOn);
   const views = live.map((s) => {
-    const pts = sampleTrail(s, detailed ? 90 : 60).map((p) => [X(p.x), Y(p.y)]);
+    const pts = sampleTrail(s, detailed ? B().samples : 60).map((p) => [X(p.x), Y(p.y)]);
     const bw = Math.max(5, 2 * bodyR * scale) * (s.boostOn ? 1.1 : 1);
     return { s, pts, bw, mine: !s.isBot };
   });
@@ -538,7 +571,7 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
     ctx.save();
     ctx.translate(2.5 * u, 4 * u);
     for (const v of views) {
-      if (detailed) strokeBody(ctx, v.pts, (f) => v.bw * (1 - 0.55 * f) + 1, 'rgba(0,0,0,0.38)', 10);
+      if (detailed) strokeBody(ctx, v.pts, (f) => v.bw * (1 - 0.55 * f) + 1, 'rgba(0,0,0,0.38)', B().chunks);
       else for (const p of v.pts) { ctx.fillStyle = 'rgba(0,0,0,0.38)'; ctx.beginPath(); ctx.arc(p[0], p[1], 3.5, 0, Math.PI * 2); ctx.fill(); }
     }
     ctx.restore();
@@ -549,8 +582,8 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
     for (const v of views) {
       const col = v.mine ? 'rgba(200,230,255,A)' : hslA(v.s.hue, 85, 60, 'A');
       const k = (v.s.boostOn ? 1.6 : 1) * (G.glow === 'high' ? 1.35 : 1);
-      strokeBody(ctx, v.pts, (f) => v.bw * (2.6 - 1.2 * f) * k, col.replace('A', String(0.07 * k)), 6);
-      if (G.glow === 'high') strokeBody(ctx, v.pts, (f) => v.bw * (1.6 - 0.6 * f), col.replace('A', '0.1'), 6);
+      strokeBody(ctx, v.pts, (f) => v.bw * (2.6 - 1.2 * f) * k, col.replace('A', String(0.07 * k)), Math.ceil(B().chunks / 2));
+      if (G.glow === 'high') strokeBody(ctx, v.pts, (f) => v.bw * (1.6 - 0.6 * f), col.replace('A', '0.1'), Math.ceil(B().chunks / 2));
       const hs = v.bw * 5 * k;
       const hx = X(v.s.x), hy = Y(v.s.y);
       ctx.drawImage(glowSprite(col.replace('A', '0.4')), hx - hs / 2, hy - hs / 2, hs, hs);
@@ -565,9 +598,9 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
       const base = mine ? '#e8f4ff' : hslA(s.hue, 70, 62, 1);
       const edge = mine ? '#8aa3bd' : hslA(s.hue, 60, 30, 1);
       const hi = mine ? 'rgba(255,255,255,0.9)' : hslA(s.hue, 90, 84, 0.85);
-      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f) + 2 * u, edge, 12);
-      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f), base, 12);
-      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f) * 0.32, hi, 12);
+      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f) + 2 * u, edge, B().chunks);
+      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f), base, B().chunks);
+      strokeBody(ctx, pts, (f) => bw * (1 - 0.55 * f) * 0.32, hi, B().chunks);
       // Dorsal scale marks every few samples.
       ctx.fillStyle = mine ? 'rgba(120,150,190,0.55)' : hslA(s.hue, 55, 38, 0.6);
       for (let i = 3; i < pts.length - 1; i += 4) {
@@ -624,13 +657,26 @@ function renderFx(ctx, w, h, state, T, themeKey, now, hero) {
   if (hero) return;
   stepParticles(dt, state);
   if (particles.length) {
+    // One path per colour and fade step (4 steps) instead of a fill per particle.
     ctx.globalCompositeOperation = 'lighter';
+    const groups = new Map();
     for (const p of particles) {
-      const a = p.life / p.max;
-      ctx.globalAlpha = a;
-      ctx.fillStyle = p.color;
+      const step = Math.min(3, Math.floor((p.life / p.max) * 4));
+      const key = p.color + '|' + step;
+      let g = groups.get(key);
+      if (!g) groups.set(key, g = { color: p.color, a: (step + 0.5) / 4, list: [] });
+      g.list.push(p);
+    }
+    for (const g of groups.values()) {
+      ctx.globalAlpha = g.a;
+      ctx.fillStyle = g.color;
       ctx.beginPath();
-      ctx.arc(X(p.x), Y(p.y), p.size * u * (0.6 + 0.4 * a), 0, Math.PI * 2);
+      const rk = u * (0.6 + 0.4 * g.a);
+      for (const p of g.list) {
+        const x = X(p.x), y = Y(p.y), r = p.size * rk;
+        ctx.moveTo(x + r, y);
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+      }
       ctx.fill();
     }
     ctx.globalAlpha = 1;

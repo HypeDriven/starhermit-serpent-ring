@@ -364,6 +364,7 @@ async function graphicsPass(browser, name, ctxOpts) {
     await page.selectOption('#gfx-preset', 'high');
     expect(await body('data-gfx-preset') === 'high', 'High not applied');
     expect(/shadows/.test(await summary()), `High summary "${await summary()}"`);
+    expect(/ · Level 0 · /.test(await summary()), `summary lacks the hardware level: "${await summary()}"`);
     await page.selectOption('#gfx-shadows', 'off');
     expect(!/shadows/.test(await summary()), 'shadow override not applied');
     ok(`${name}: Graphics panel switches Low → High and applies a Shadows override`);
