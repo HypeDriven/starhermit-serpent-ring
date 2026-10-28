@@ -1,27 +1,26 @@
 // Key extraction for the i18n coverage test (also handy for listing keys):
-// literal T('…') / N('…') calls in js/, data-i18n markup in index.html, and
-// the display fields of the content tables.
+// literal T('…') / N('…') calls in the client (native/*.ts) and the shared
+// modules (js/), and the display fields of the content tables.
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { JOURNEY, LESSONS, CHALLENGES, PRACTICE_DIFFICULTIES, dailyContent } from '../js/content.js';
 
 const ROOT = new URL('..', import.meta.url).pathname;
-const SKIP = new Set(['i18n.js', 'sh-strings.js', 'graphics.js']);
+const SKIP = new Set(['i18n.js', 'sh-strings.js', 'i18n.ts']);
 const unescape = (s) => s.replace(/\\(['"\\`])/g, '$1');
 
 export function sourceKeys() {
   const keys = new Set();
   const ternary = /(?<![\w.$])T\([^'"\n()]*?\?\s*'((?:[^'\\\n]|\\.)*)'\s*:\s*'((?:[^'\\\n]|\\.)*)'/g;
   const call = /(?<![\w.$])(?:T|N)\(\s*(?:'((?:[^'\\\n]|\\.)*)'|"((?:[^"\\\n]|\\.)*)")/g;
-  const dir = join(ROOT, 'js');
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.js') || SKIP.has(f)) continue;
-    const src = readFileSync(join(dir, f), 'utf8');
-    for (const m of src.matchAll(call)) keys.add(unescape(m[1] ?? m[2]));
-    for (const m of src.matchAll(ternary)) { keys.add(unescape(m[1])); keys.add(unescape(m[2])); }
+  for (const dir of [join(ROOT, 'js'), join(ROOT, 'native')]) {
+    for (const f of readdirSync(dir)) {
+      if (!/\.(js|ts)$/.test(f) || SKIP.has(f)) continue;
+      const src = readFileSync(join(dir, f), 'utf8');
+      for (const m of src.matchAll(call)) keys.add(unescape(m[1] ?? m[2]));
+      for (const m of src.matchAll(ternary)) { keys.add(unescape(m[1])); keys.add(unescape(m[2])); }
+    }
   }
-  const html = readFileSync(join(ROOT, 'index.html'), 'utf8');
-  for (const m of html.matchAll(/data-i18n(?:-aria|-title)?="([^"]+)"/g)) keys.add(m[1].replace(/&quot;/g, '"'));
   return keys;
 }
 

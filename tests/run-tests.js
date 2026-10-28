@@ -6,11 +6,9 @@ import {
   createGame, defaultRuleset, step, applyCommand, getLegalActions, hashState,
   makeResult, getResults, scoreBreakdown, seedFromString, cloneState, HEADING_MAX,
 } from '../js/rules.js';
-import { readFileSync } from 'node:fs';
-// js/gpu-level.js is a classic script in the page (window.StarHermitGpu); evaluate it the same way here.
-new Function('window', 'module', readFileSync(new URL('../js/gpu-level.js', import.meta.url), 'utf8'))(globalThis, undefined);
-const gfx = await import('../js/gfx.js');
-const { pickLocale, strings } = await import('../js/graphics.js');
+import { LESSON_CHECKS, createRound, tick, finished, human, aim, undo as undoRound } from '../js/session.js';
+import * as look from '../js/look.js';
+import * as progress from '../js/progress.js';
 
 let passed = 0;
 let failed = 0;
@@ -37,11 +35,7 @@ await t('journey has 40 stages', () => check(JOURNEY.length === 40));
 await t('challenges present', () => check(CHALLENGES.length >= 6));
 await t('lessons present', () => check(LESSONS.length === 5));
 
-// Keep authored lesson checks and the Learn-mode tracker in main.js in step.
-const LESSON_CHECKS = [
-  'heading-turned', 'laps', 'ticks', 'motes', 'motes-after', 'length',
-  'length-alive', 'bloom', 'boost-ticks', 'proximity', 'eliminate-or-survive',
-];
+// Keep authored lesson checks and the Learn-mode tracker (js/session.js) in step.
 await t('every lesson step uses a check the UI implements', () => {
   for (const l of LESSONS) {
     check(Array.isArray(l.steps) && l.steps.length > 0, l.id + ' has no steps');
@@ -161,86 +155,70 @@ await t('results expose a component breakdown that sums to the total', () => {
   check(ranked[0].placement === 1 && ranked.length === s0.serpents.length, 'ranking malformed');
 });
 
-// Cloud-save zipping lives in the StarHermit SDK; tests/platform.test.mjs covers the round trip.
-
-// ---- Graphics quality model (js/gfx.js) ----
-const DESK = { cores: 8, memoryGb: 8 };
-const PHONE = { mobile: true, cores: 8, memoryGb: 8 };
-
-await t('gfx: hardware level picks the Auto preset (Low 0, Balanced 4, High 10, Ultra 17)', () => {
-  check(gfx.detectPreset('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)', DESK) === 'low', 'swiftshader');
-  check(gfx.detectLevel('llvmpipe (LLVM 15.0.7, 256 bits)', DESK) === 0, 'llvmpipe level 0');
-  check(gfx.detectPreset('', DESK) === 'low', 'no WebGL');
-  check(gfx.detectPreset('ANGLE (AMD, AMD Radeon(TM) Graphics Direct3D11 vs_5_0 ps_5_0, D3D11)', DESK) === 'low', 'radeon igpu');
-  check(gfx.detectPreset('ANGLE (Intel, Intel(R) UHD Graphics 620 Direct3D11 vs_5_0 ps_5_0, D3D11)', DESK) === 'low', 'intel uhd');
-  check(gfx.detectPreset('ANGLE (Intel, Intel(R) Iris(R) Xe Graphics Direct3D11)', DESK) === 'balanced', 'iris xe');
-  check(gfx.detectPreset('ANGLE (NVIDIA, NVIDIA GeForce GTX 1070 Direct3D11 vs_5_0 ps_5_0)', DESK) === 'high', 'gtx 1070');
-  check(gfx.detectPreset('ANGLE (NVIDIA, NVIDIA GeForce RTX 4080 Direct3D11 vs_5_0 ps_5_0)', DESK) === 'ultra', 'rtx 4080');
-  check(gfx.detectLevel('ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Direct3D11 vs_5_0 ps_5_0)', DESK) === 20, 'rtx 5090 level');
-  check(gfx.detectPreset('ANGLE (NVIDIA, NVIDIA GeForce RTX 5090 Direct3D11 vs_5_0 ps_5_0)', DESK) === 'ultra', 'rtx 5090');
-  for (const [p, lv] of Object.entries(gfx.LEVELS)) check(gfx.presetForLevel(lv) === p, `level ${lv}`);
-  check(gfx.presetForLevel(3) === 'low' && gfx.presetForLevel(16) === 'high', 'between floors');
+// ---- The round (js/session.js): the client's input path ----
+await t('round: held steering turns at the simulation rate and the serpent follows', () => {
+  const cur = createRound(LESSONS[0]);
+  const me = human(cur);
+  const h0 = me.heading;
+  cur.steerDir = 1;
+  for (let i = 0; i < 5; i++) tick(cur);
+  check(((me.heading - h0 + HEADING_MAX) % HEADING_MAX) === 5 * cur.state.ruleset.serpent.turnRate, 'turned 5 ticks of turnRate');
+  cur.steerDir = 0;
+  aim(cur, 0);
+  check(cur.state.commandQueue.length > 0 || me.targetHeading === 0, 'pointer aim queued a steer');
 });
 
-await t('gfx: phones and tablets are Balanced at most; software GPUs stay Low', () => {
-  check(gfx.detectPreset('Adreno (TM) 740', PHONE) === 'balanced', 'adreno 740');
-  check(gfx.detectLevel('Adreno (TM) 740', PHONE) <= 9, 'phone cap');
-  check(gfx.detectPreset('Apple M2', PHONE) === 'balanced', 'apple tablet');
-  check(gfx.detectPreset('SwiftShader', PHONE) === 'low', 'software phone');
+await t('round: lesson 1 completes by orbiting; the round ends there', () => {
+  const cur = createRound(LESSONS[0]);
+  let n = 0;
+  while (!finished(cur) && n++ < 4000) {
+    const me = human(cur);
+    const mid = (cur.state.arena.outer + cur.state.arena.inner) / 2;
+    const r = Math.hypot(me.x, me.y);
+    aim(cur, Math.atan2(me.y, me.x) + Math.PI / 2 + Math.max(-0.6, Math.min(0.6, (r - mid) / 3000)));
+    tick(cur);
+  }
+  check(cur.lesson.done && cur.lesson.index === LESSONS[0].steps.length, 'every step met');
 });
 
-await t('gfx: per-preset budgets are explicit, grow from Low to Ultra and scale with the level', () => {
+await t('round: undo only in Practice', () => {
+  const ranked = createRound(JOURNEY[0]);
+  for (let i = 0; i < 20; i++) tick(ranked);
+  check(!undoRound(ranked), 'no undo in the Journey');
+  const prac = createRound({ id: 'practice-calm', kind: 'practice', name: 'x', seed: 7, ruleset: defaultRuleset({ allowUndo: true, bots: { count: 0 } }) });
+  for (let i = 0; i < 20; i++) tick(prac);
+  check(undoRound(prac), 'undo in Practice');
+});
+
+// ---- Records (js/progress.js) ----
+await t('records: a round folds in; docs merge to the better of both; foreign text reads', () => {
+  const doc = progress.emptyDoc();
+  progress.recordResult(doc, { id: 'j01' }, { total: 120, goalMet: false, peakTrail: 60 });
+  const rec = progress.recordResult(doc, { id: 'j01' }, { total: 90, goalMet: true, peakTrail: 80 });
+  check(rec.plays === 2 && rec.wins === 1 && rec.best === 120 && rec.bestPeak === 80, JSON.stringify(rec));
+  const other = { version: 1, records: { j01: { plays: 5, wins: 0, best: 50, bestPeak: 99 }, j02: { plays: 1, wins: 1, best: 7, bestPeak: 45 } } };
+  const m = progress.mergeDocs(doc, other);
+  check(JSON.stringify(m.records.j01) === JSON.stringify({ plays: 5, wins: 1, best: 120, bestPeak: 99 }), 'j01 merged');
+  check(m.records.j02.best === 7, 'j02 kept');
+  check(progress.sameDoc(progress.mergeDocs(m, doc), m), 'merge is idempotent');
+  check(progress.readForeign(JSON.stringify(other)).records.j02.plays === 1, 'foreign doc read');
+  check(progress.readForeign('not json') === null && progress.readForeign('{"version":2}') === null, 'junk rejected');
+  check(Object.keys(progress.normalize({ version: 1, records: { a: null, b: { plays: -3, best: 'x' } } }).records).join() === 'b', 'normalize drops junk');
+});
+
+// ---- The look per graphics level (js/look.js, the old gfx.js presets) ----
+await t('look: the four presets keep the old tiers and budgets, scaled ≤ 2× by the level', () => {
+  const low = look.lookFor('low', 0);
+  check(!low.effects && low.dprCap === 1 && look.particleCap(low) === 0, 'low is the plain drawing');
+  const bal = look.lookFor('balanced', 2);
+  check(bal.glow === 'on' && bal.shadows === 'off' && bal.grade === 'on' && bal.detail === 'detailed', 'balanced row');
+  check(look.particleCap(bal) === Math.round(look.BUDGETS.balanced.particles / 3), 'balanced: Particles low = 1/3');
+  const hi = look.lookFor('high', 4);
+  check(JSON.stringify(hi.budget) === JSON.stringify(look.BUDGETS.high), 'floor level = tuned budget');
+  check(look.lookFor('ultra', 9).budget.spores <= 2 * look.BUDGETS.ultra.spores, 'scale ≤ 2×');
+  check(look.lookFor('ultra', 9).glow === 'high' && look.lookFor('bogus', 0).preset === 'balanced', 'ultra glow; unknown → balanced');
   const keys = ['particles', 'spores', 'fronds', 'specks', 'samples', 'chunks', 'haloRings'];
-  for (const p of gfx.PRESETS) for (const k of keys) check(Number.isFinite(gfx.BUDGETS[p][k]), `${p}.${k}`);
-  for (let i = 1; i < gfx.PRESETS.length; i++) for (const k of keys) {
-    check(gfx.BUDGETS[gfx.PRESETS[i]][k] >= gfx.BUDGETS[gfx.PRESETS[i - 1]][k], `${gfx.PRESETS[i]}.${k} grows`);
-  }
-  check(JSON.stringify(gfx.resolve({ preset: 'high' }, 'low', 10).budget) === JSON.stringify(gfx.BUDGETS.high), 'floor level = tuned budget');
-  check(JSON.stringify(gfx.resolve({ preset: 'ultra' }, 'low', 0).budget) === JSON.stringify(gfx.resolve({ preset: 'ultra' }, 'ultra', 17).budget), 'below floor = floor');
-  check(gfx.budgetFor('balanced', 9).spores > gfx.budgetFor('balanced', 4).spores, 'counts scale within the preset');
-  check(gfx.budgetFor('balanced', 20).spores <= 2 * gfx.BUDGETS.balanced.spores, 'scale ≤ 2×');
-  check(gfx.budgetFor('ultra', 20).particles <= gfx.PARTICLE_MAX && gfx.budgetFor('ultra', 20).spores <= gfx.SPORE_MAX, 'maxima');
-  check(gfx.particleCap(gfx.resolve({ preset: 'high' }, 'low', 10)) === gfx.BUDGETS.high.particles, 'high: full particle budget');
-  check(gfx.particleCap(gfx.resolve({ preset: 'balanced' }, 'low', 4)) === Math.round(gfx.BUDGETS.balanced.particles / 3), 'balanced: Particles low = 1/3');
-  check(gfx.particleCap(gfx.resolve({ preset: 'low' }, 'low', 0)) === 0, 'low: particles off');
-  const head = gfx.resolve({}, 'low', 0);
-  check(head.preset === 'low' && !head.effects && head.level === 0, 'headless SwiftShader: Low, plain drawing');
-});
-
-await t('gfx: resolve applies preset, overrides and clamps scale', () => {
-  const auto = gfx.resolve({}, 'low');
-  check(auto.auto && auto.preset === 'low' && !auto.effects, 'auto low has no effects');
-  check(auto.adaptive === true && auto.showFps === false, 'defaults');
-  const hi = gfx.resolve({ preset: 'high' }, 'low');
-  check(!hi.auto && hi.preset === 'high' && hi.shadows === 'on' && hi.glow === 'on' && hi.effects, 'high row');
-  const ov = gfx.resolve({ preset: 'high', glow: 'off', particles: 'bogus' }, 'low');
-  check(ov.glow === 'off' && ov.particles === 'high', 'override + invalid ignored');
-  check(gfx.resolve({ preset: 'low', render_scale: 9 }, 'low').scale === 2, 'scale clamps high');
-  check(gfx.resolve({ preset: 'low', render_scale: 0.1 }, 'low').scale === 0.5, 'scale clamps low');
-  check(gfx.resolve({ preset: 'ultra' }).scale === 1.25, 'ultra scale');
-  check(gfx.resolve({ adaptive: false, show_fps: true }, 'high').adaptive === false, 'adaptive off');
-  check(gfx.pixelRatio(gfx.resolve({ preset: 'low' }), 3, 1) === 1, 'low caps dpr at 1');
-  check(gfx.pixelRatio(gfx.resolve({ preset: 'high' }), 3, 0.6) === 1.2, 'high dpr cap × adaptive');
-  check(gfx.presetTier('balanced', 'particles') === 'low', 'presetTier');
-  check(/px$/.test(gfx.describe(hi, [720, 720])) && /shadows/.test(gfx.describe(hi)), 'describe');
-});
-
-await t('gfx: choosing a preset clears overrides but keeps scale/toggles', () => {
-  const next = gfx.choosePreset({ preset: 'high', glow: 'off', detail: 'plain', render_scale: 1.5, show_fps: true }, 'low');
-  check(next.preset === 'low' && !('glow' in next) && !('detail' in next), 'overrides cleared');
-  check(next.render_scale === 1.5 && next.show_fps === true, 'scale/toggles kept');
-  check(gfx.choosePreset({}, 'nonsense').preset === 'auto', 'unknown -> auto');
-});
-
-await t('gfx: Graphics panel strings exist in every locale', () => {
-  const need = Object.keys(strings('en-US'));
-  for (const loc of ['en-US', 'en-GB', 'es-419', 'es-ES', 'de-DE', 'fr-FR', 'fr-CA', 'pt-BR', 'it-IT']) {
-    const s = strings(loc);
-    for (const k of need) check(typeof s[k] === 'string' && s[k].length, `${loc} missing ${k}`);
-    if (!loc.startsWith('en')) check(s.quality !== 'Quality', `${loc} untranslated`);
-  }
-  check(pickLocale(['de-AT']) === 'de-DE' && pickLocale(['fr-CA']) === 'fr-CA' && pickLocale(['es-MX']) === 'es-419', 'pickLocale');
-  check(pickLocale(['en-GB']) === 'en-GB' && pickLocale(['xx']) === 'en-US', 'pickLocale fallback');
+  for (let i = 1; i < look.TIERS.length; i++) for (const k of keys) check(look.BUDGETS[look.TIERS[i]][k] >= look.BUDGETS[look.TIERS[i - 1]][k], `${k} grows`);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);

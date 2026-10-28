@@ -1,0 +1,61 @@
+# The menus on a desktop: the Daily brief and its rules (Help returns to it), a Journey stage paused by Esc and resumed,
+# paused again and left to the title, Practice with undo, and the runtime's Options from the title.
+# viewport 1280x800@1
+until 600 Steer, gather light
+frames 30
+click =Daily Challenge
+until 300 Play the daily challenge
+frames 5
+save daily
+click =Rules and details
+until 300 Help — rules and controls
+frames 5
+click =Close help
+until 300 Play the daily challenge
+frames 5
+click =← Back to title
+until 300 Steer, gather light
+frames 5
+click =Journey
+until 300 First Sprouts
+frames 5
+click 2. Sweet Pollen
+until 300 · length
+frames 30
+key Escape 1
+until 300 Resume
+frames 5
+save pause
+click =Resume
+until 300 · length
+frames 30
+click =Pause game
+until 300 Resume
+frames 5
+click =Leave to title
+until 300 Steer, gather light
+frames 5
+click =Play
+until 300 Choose a mode
+frames 5
+click =Practice
+until 300 Calm —
+frames 5
+click Calm —
+until 300 · length
+frames 40
+key KeyU 1
+frames 10
+save practice
+key Escape 1
+until 300 Resume
+frames 5
+click =Leave to title
+until 300 Steer, gather light
+frames 5
+click =Options
+frames 30
+save options-menu
+key F1 1
+frames 10
+until 300 Steer, gather light

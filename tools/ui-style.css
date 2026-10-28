@@ -1,0 +1,80 @@
+/* Serpent Ring — the browser build's css/style.css rewritten class-based for
+   the engine's UI (`npm run css` converts it into assets/ui-style.json).
+   Element selectors, ids, [hidden] rules and @media do not convert: every
+   widget names its classes, and the short-landscape layout is picked in
+   native/screens.ts. The Graphics panel's rules are gone (the runtime's
+   Options), as is the FPS readout (the runtime's). */
+
+:root {
+  --bg: #0b1220; --panel: #131c2e; --text: #f4efe6; --muted: #9fb0bd; --accent: #ffd75e;
+  --hi: #1d2a40; --primary: #b8860b; --white: #ffffff; --synced: #7fd98f;
+}
+
+* { box-sizing: border-box; }
+
+/* ------------------------------------------------------------- text */
+.text { color: var(--text); font-size: 16px; }
+.muted { color: var(--muted); font-size: 16px; }
+.small { color: var(--muted); font-size: 13.6px; }
+.title { color: var(--white); font-size: 19.2px; font-weight: 700; }
+.player { color: var(--text); font-size: 13.6px; }
+.sync { color: var(--muted); font-size: 13.6px; }
+.sync-synced { color: var(--synced); font-size: 13.6px; }
+.sync-saving { color: var(--accent); font-size: 13.6px; }
+.clock { color: var(--muted); font-size: 16px; }
+.hero-name { color: var(--white); font-size: 24px; font-weight: 700; text-align: center; }
+.h2 { color: var(--white); font-size: 20.8px; font-weight: 700; }
+.h3 { color: var(--accent); font-size: 18.7px; font-weight: 700; }
+.tagline { color: var(--text); font-size: 16px; text-align: center; }
+.hud { color: var(--text); font-size: 15.2px; text-align: center; }
+.card-title { color: var(--white); font-size: 16px; font-weight: 700; }
+.card-text { color: var(--muted); font-size: 14.4px; }
+.score-k { color: var(--text); font-size: 16px; }
+.score-v { color: var(--text); font-size: 16px; text-align: end; }
+.toast-text { color: var(--white); font-size: 16px; text-align: center; }
+.wrap { color: var(--white); font-size: 16px; }
+.wrap-primary { color: var(--white); font-size: 16px; font-weight: 700; text-align: center; }
+
+/* ------------------------------------------------------------- surfaces */
+.topbar { background: var(--panel); border-radius: 0; padding: 8px 16px; }
+.toast { background: var(--panel); border-radius: 9.6px; padding: 9.6px 16px; }
+.playfield { background: #0a0f18; border-radius: 6.4px; }
+
+/* ------------------------------------------------------------- buttons */
+.btn {
+  min-height: 44px; padding: 11.2px 16px;
+  background: var(--panel); border: none; border-radius: 9.6px;
+  color: var(--white); font-size: 16px; text-align: center;
+}
+.btn:hover { background: var(--hi); }
+.btn:focus-visible { background: var(--hi); outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn:disabled { opacity: 0.5; }
+.btn-primary {
+  min-height: 44px; padding: 11.2px 16px;
+  background: var(--primary); border: none; border-radius: 9.6px;
+  color: var(--white); font-size: 16px; font-weight: 700; text-align: center;
+}
+.btn-primary:hover { background: #c99a1f; }
+.btn-primary:focus-visible { background: #c99a1f; outline: 2px solid var(--accent); outline-offset: 1px; }
+.btn-icon {
+  min-height: 44px; min-width: 44px; padding: 8px 14.4px;
+  background: var(--panel); border: none; border-radius: 9.6px;
+  color: var(--white); font-size: 16px; text-align: center;
+}
+.btn-icon:hover { background: var(--hi); }
+.btn-icon:focus-visible { background: var(--hi); outline: 2px solid var(--accent); outline-offset: 1px; }
+/* .sr-blockbtn: full-width, left-aligned list buttons; .sr-mode-card: the mode grid */
+.btn-block {
+  min-height: 44px; padding: 11.2px 16px;
+  background: var(--panel); border: none; border-radius: 9.6px;
+  color: var(--white); font-size: 16px; text-align: start;
+}
+.btn-block:hover { background: var(--hi); }
+.btn-block:focus-visible { background: var(--hi); outline: 2px solid var(--accent); outline-offset: 1px; }
+.card {
+  padding: 16px;
+  background: var(--panel); border: none; border-radius: 9.6px;
+  color: var(--white); font-size: 16px; text-align: start;
+}
+.card:hover { background: var(--hi); }
+.card:focus-visible { background: var(--hi); outline: 2px solid var(--accent); outline-offset: 1px; }

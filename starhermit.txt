@@ -1,14 +1,34 @@
 name=Serpent Ring
 description=Guide a luminous serpent, collect motes to grow, and use bursts of speed while avoiding other serpents' bodies.
-launch=index.html
 owner=2712e04e-461b-4d23-81ae-e40b429128a8
 server=score-script.js
-version=1.0.0
 cover=cover.jpg
 
-# Keyboard actions (KeyboardEvent.code; remappable via the platform controls API).
+# StarHermit engine script game: one package, played natively by the
+# StarHermit client and in browsers by the engine's web runtime. Browsers open
+# launch=index.html, the loader `npm run package` writes (it pins the engine
+# on wiki.starhermit.com by hash; never edit it). Re-run `npm run package`
+# after every change and commit index.html + starhermit-files.json.
+launch=index.html
+engine.api=1
+engine.entry=native/main.ts
+engine.version=1.20.1
+engine.minor=20
+engine.capabilities=platform,storage,clipboard
+
+# Keyboard controls (players rebind keys and pads in the runtime's Options).
+# The pointer or a finger on the ring also steers (the serpent turns toward
+# it); pressing or holding it there boosts.
 control.steer_left=ArrowLeft+KeyA | Steer left
 control.steer_right=ArrowRight+KeyD | Steer right
 control.boost=Space+ArrowUp+KeyW | Boost (hold)
 control.undo=KeyU | Undo (practice)
 control.pause=Escape+KeyP | Pause / resume
+
+# Gamepad defaults: the D-pad or left stick steers, A or the right trigger
+# boosts, X undoes (Practice), Start pauses.
+engine.gamepad.steer_left=DpadLeft+LeftStickLeft
+engine.gamepad.steer_right=DpadRight+LeftStickRight
+engine.gamepad.boost=South+RightTrigger
+engine.gamepad.undo=West
+engine.gamepad.pause=Start
