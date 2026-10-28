@@ -2,7 +2,7 @@
 
 **Status:** running specification of the shipped game (present tense).
 **Genre:** realtime growth arena, solo against bot rivals
-**Platform:** a StarHermit engine script game (engine 1.20.1, `engine.minor=20`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
+**Platform:** a StarHermit engine script game (engine 1.22.0, `engine.minor=20`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
 **Rendering:** a 2D ring drawn with `starhermit:draw` over a baked `starhermit:canvas` backdrop; menus and HUD on `starhermit:ui`
 
 ## 1. Product vision
