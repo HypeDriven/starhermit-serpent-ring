@@ -2,7 +2,7 @@
   "files": {
     "assets/ui-style.json": {"sha256": "867d364755caa602cc9884e2a9e7696af3cfad645fcc2b6c9c89f58a85faad1c", "size": 5943},
     "cover.jpg": {"sha256": "c3024a9c0b4abfc2bcbd52175089e20b5422edecac1b5ae775722be0fb5ce307", "size": 304209},
-    "index.html": {"sha256": "f03c6093cc734bb51e98f88a81603e679f1142490a6853ca9c57c355e5f96f29", "size": 1781},
+    "index.html": {"sha256": "4dbd4e3acba8ea6187e19b8a1e5da102be81ec93058f99324ececbfff02423de", "size": 1781},
     "js/content.js": {"sha256": "ac3b349df0187b5c7b1131037da773db69447cd0b60828d375732cfce5ff4572", "size": 30856},
     "js/i18n.js": {"sha256": "5328c3b405d290b4ff9c71c0b0df51a5a1507638e0401c1d91af9a5e5847dd1b", "size": 2795},
     "js/locales/de.js": {"sha256": "a068657fa6b648c177fc870195f724b97a84c3b027a87a14431c3801d8e41a90", "size": 14566},
@@ -40,7 +40,7 @@
     "sfx/eat-morsel.opus": {"sha256": "14107cd4a3b4dec5dc6a1e9bf4239bfbdf4d287a44b7f1406967faafdc8bf591", "size": 17006},
     "sfx/eat-pluck.opus": {"sha256": "6046f4125f31e06e08d26fb0055251222bf851b03fcd9f27fa73001b59139ed4", "size": 16397},
     "sfx/eat-spark.opus": {"sha256": "f4e5fea98ad8022e29da663905b42c682de636f90ab39ba1126de46d60a5ece9", "size": 18759},
-    "starhermit.txt": {"sha256": "47dca7a496ba4543f6652ec3aee1e4f173e4b995d9353e661fee4b0d6f4e4986", "size": 1473}
+    "starhermit.txt": {"sha256": "5bb45b1e830f605d3cc2f5b568e27fa8c06df1dd50bf4e7bf3f703fccb3aac0d", "size": 1473}
   },
   "excluded": ["LICENSE.md", "coverart.png", "knownissues.md", "node_modules/", "package-lock.json", "package.json", "sfx/manifest.json", "sfx/manifest.md", "spec.md", "tests/", "tools/", "tsconfig.json"],
   "format": 1
