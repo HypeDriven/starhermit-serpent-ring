@@ -107,13 +107,13 @@ The authored one-shots (sfx/*.opus) play per event, rotating through each event'
 
 ### Localization
 
-Every game string is translated in en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR and it-IT (js/locales/, English text as keys) and drawn through `T()` each frame in the runtime's interface language (Options › Language, else the account's or device's), so a change shows on the next frame.
+Every game string is translated in en-US, en-GB, es-419, es-ES, de-DE, fr-FR, fr-CA, pt-BR and it-IT (assets/strings.json, English text as keys) and drawn through `T()` each frame in the runtime's interface language (Options › Language, else the account's or device's), so a change shows on the next frame.
 
 ## 5. Technical architecture
 
 - `js/rules.js` — the deterministic 30 Hz simulation (integer positions and headings, seeded rng streams, bots, motes, thorns, boost, undo ring, scoring, results); `js/content.js` — themes, stages, lessons, challenges, practice difficulties, the Daily; both unchanged from the browser build.
 - `js/session.js` — one round: held steering and pointer aims folded into commands each tick (the old main.js loop) and the Learn-mode lesson tracker; shared by the client and the tools.
-- `js/progress.js` — the records document and its merge; `js/look.js` — the graphics presets; `js/i18n.js`, `js/sh-strings.js`, `js/locales/` — strings.
+- `js/progress.js` — the records document and its merge; `js/look.js` — the graphics presets; `assets/strings.json` — strings.
 - `native/main.ts` (screen flow, input, the fixed-step clock, results, score posting), `native/screens.ts` (all UI), `native/render.ts` (the ring), `native/platform.ts` (save, player, clock, leaderboard), `native/audio.ts`, `native/style.ts` (tools/ui-style.css → assets/ui-style.json), `native/i18n.ts`, `native/game.ts` (typed facade).
 
 ### Determinism

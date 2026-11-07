@@ -4,10 +4,11 @@
 // tables (stages, chapters, lessons, challenges, difficulties, dailies).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DICTS, LOCALES, T, setLocale, getLang } from '../js/i18n.js';
-import { shText } from '../js/sh-strings.js';
+import { readFileSync } from 'node:fs';
 import { ALL } from './i18n-keys.mjs';
 
+const DICTS = JSON.parse(readFileSync(new URL('../assets/strings.json', import.meta.url), 'utf8'));
+const LOCALES = Object.keys(DICTS);
 const placeholders = (s) => [...String(s).matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',');
 
 test('the key set is non-trivial', () => {
@@ -31,21 +32,7 @@ test('no locale carries keys that no longer exist', () => {
   }
 });
 
-test('T falls back to the key and fills placeholders; regional dictionaries inherit', () => {
-  setLocale('de-DE');
-  assert.equal(getLang(), 'de-DE');
-  assert.equal(T('Not a real key {x}', { x: 1 }), 'Not a real key 1');
-  assert.equal(T('Paused'), 'Pausiert');
-  setLocale('fr-CA');
-  assert.equal(T('Paused'), 'En pause'); // inherited from fr-FR
-  setLocale('xx-YY');
-  assert.equal(getLang(), 'en-US');
-  assert.equal(T('Paused'), 'Paused');
-});
-
-test('StarHermit chrome strings follow the game language', () => {
-  setLocale('it-IT');
-  assert.notEqual(shText('signIn'), 'Sign in with StarHermit');
-  setLocale('en-US');
-  assert.equal(shText('signIn'), 'Sign in with StarHermit');
+test('the nine locales; en-US is the identity table', () => {
+  assert.deepEqual(LOCALES.slice().sort(), ['de-DE', 'en-GB', 'en-US', 'es-419', 'es-ES', 'fr-CA', 'fr-FR', 'it-IT', 'pt-BR']);
+  for (const [k, v] of Object.entries(DICTS['en-US'])) assert.equal(v, k);
 });

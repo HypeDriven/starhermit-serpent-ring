@@ -4,7 +4,7 @@
 // centred column up to 760 px wide — the title with its ring vignette and
 // menu, the mode cards, Practice difficulties, the Daily brief, the Journey
 // chapters, the lessons, the challenges, Help, the ring with its HUD, Pause
-// and the results — plus the toast. The old media queries are layouts picked
+// and the results. The old media queries are layouts picked
 // by the window's logical size: narrow (≤ 700 px: tighter padding) and short
 // landscape (≤ 520 px tall: the ring beside its HUD, the title menu in two
 // columns, no vignette). The Graphics screen and the pause panel's volume
@@ -26,11 +26,9 @@ import { token } from "./style.ts";
 // ------------------------------------------------------------------ layout
 interface Layout { lw: number; lh: number; sc: number; narrow: boolean; land: boolean }
 function layoutNow(): Layout {
-  const f = frame();
-  const sc = ui.preferences().scale;
-  const sa = f.safeArea;
-  const lw = Math.max(1, (f.width - sa.left - sa.right) / sc), lh = Math.max(1, (f.height - sa.top - sa.bottom) / sc);
-  return { lw, lh, sc, narrow: lw <= 700, land: lh <= 520 && lw > lh };
+  const v = ui.viewport!();
+  const lw = Math.max(1, v.width), lh = Math.max(1, v.height);
+  return { lw, lh, sc: v.scale, narrow: lw <= 700, land: lh <= 520 && lw > lh };
 }
 const lastSize = new Map<string, ui.Rect>();
 function textWidth(text: string, style: string, kind?: "button" | "heading"): number {
@@ -79,7 +77,6 @@ export function drawScreens(): void {
       body(L);
     }, { width: L.lw, height: L.lh, spacing: 0 });
   });
-  toasts(L);
   if (app.focusNext) {
     const age = f.frame - app.openedFrame;
     if (primaryPointer() === "coarse") app.focusNext = null;
@@ -250,18 +247,8 @@ function list(w: number, kind: "learn" | "challenge"): void {
 
 /** Buttons at their own widths in rows that wrap at `width` (.sr-rowbtns: flex-wrap). */
 function flow(label: string, list: Btn[], width: number, gap = 9.6): void {
-  const rows: Btn[][] = [[]];
-  let used = 0;
   const bw = (b: Btn): number => Math.min(width, textWidth(b.text, b.style ?? "btn", "button") + 2);
-  for (const b of list) {
-    const bwid = bw(b);
-    if (rows[rows.length - 1]!.length && used + gap + bwid > width) { rows.push([]); used = 0; }
-    used += (rows[rows.length - 1]!.length ? gap : 0) + bwid;
-    rows[rows.length - 1]!.push(b);
-  }
-  ui.column(label, () => {
-    rows.forEach((row, ri) => ui.row(`${label}-r${ri}`, () => { for (const b of row) button({ ...b, width: bw(b) }); }, { spacing: gap, width, align: "center" }));
-  }, { spacing: gap, width });
+  ui.row(label, () => { for (const b of list) button({ ...b, width: bw(b) }); }, { wrap: true, gap, width, align: "center" });
 }
 
 // ------------------------------------------------------------------ help (main.js renderHelp)
@@ -382,15 +369,4 @@ function play(L: Layout, bh: number, inner: number, pad: number): void {
       ui.row("pause-row", pauseBtn, { width: inner, justify: "center" });
     }, { width: inner + 2 * pad, spacing: 4, align: "center", padding: pad });
   }, { width: L.lw, justify: "center" });
-}
-
-// ------------------------------------------------------------------ toast (.sr-toast)
-function toasts(L: Layout): void {
-  if (!app.toasts.length) return;
-  const w = Math.min(L.lw - 32, 480);
-  ui.place("toast-stack", { anchor: "bottom", y: 16 }, () => {
-    ui.column("toast-col", () => {
-      app.toasts.forEach((t, i) => ui.column(`toast-${i}`, () => centred(t.text, w - 32, "toast-text", `toast-${i}-text`), { style: "toast" }));
-    }, { spacing: 6, align: "center" });
-  });
 }

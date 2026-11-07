@@ -13,7 +13,8 @@
 // Time is the runtime's fixed steps at the rules' own rate (30 Hz, one rules
 // tick a step), so slow frames never change a round and play scripts replay
 // exactly; render checks play one step a frame.
-import { clipboard, frame, onFixedUpdate, onPreferencesChange, onRender, onResume, onStart, onSuspend, onUpdate, preferences, setFixedRate } from "starhermit:engine";
+import { afterRender, clipboard, frame, levelSettings, onFixedUpdate, onPreferencesChange, onRender, onResume, onStart, onSuspend, onUpdate, preferences, setFixedRate } from "starhermit:engine";
+import type { GraphicsLevel, QualityTier } from "starhermit:engine";
 import { isKeyDown, onAction, onKey, onPointerButton, onPointerMove, onTouch } from "starhermit:input";
 import * as ui from "starhermit:ui";
 import { onSessionEnded, requestSignIn } from "starhermit:platform";
@@ -39,7 +40,6 @@ export const app = {
   round: null as Round | null,
   results: null as ResultsView | null,
   dailyItem: null as Item | null,
-  toasts: [] as { text: string; until: number }[],
 };
 let clockMs = 0;
 const now = (): number => clockMs / 1000;
@@ -55,12 +55,11 @@ function flushAnnouncements(): void {
   try { ui.announce(text, { politeness: "polite" }); } catch { /* busy */ }
 }
 export function toast(text: string, seconds = 3.2): void {
-  app.toasts.push({ text, until: Date.now() / 1000 + seconds });
-  if (app.toasts.length > 3) app.toasts.shift();
+  // the engine's bottom stack of 3 (.sr-toast's look); a press still reaches what is under it
+  ui.toast!(text, { duration: seconds, style: ["toast", "toast-text"], dismissible: false });
 }
-const pending: (() => void)[] = [];
 /** A widget's press, run once the frame's UI is built (state changes mid-build would break later widgets). */
-export function later(fn: () => void): void { pending.push(fn); }
+export function later(fn: () => void): void { afterRender(fn); }
 
 // ------------------------------------------------------------------ names (main.js itemName / itemBrief)
 export function itemName(item: Item): string {
@@ -217,8 +216,8 @@ export function resultsHeadline(): string {
 export function lbLine(): string | null {
   const lb = app.results?.lb;
   if (!lb) return null;
-  if (lb === "posting") return S("lbPosting");
-  return !lb.posted ? S("lbNotPosted") : lb.rank ? S("lbRank", { rank: lb.rank }) : S("lbPosted");
+  if (lb === "posting") return S("leaderboardPosting");
+  return !lb.posted ? S("leaderboardNotPosted") : lb.rank ? S("leaderboardRank", { rank: lb.rank }) : S("leaderboardPosted");
 }
 export const BREAKDOWN: Record<string, string> = {
   motes: N("Motes gathered"), mass: N("Mass consumed"), peak: N("Peak length"),
@@ -234,7 +233,7 @@ export function signIn(): void { void requestSignIn().catch(() => undefined); }
 export function invite(): void {
   const link = platform.inviteLink();
   if (!link) return;
-  try { clipboard.writeText(link); toast(S("inviteCopied")); } catch { toast(S("inviteLink", { url: link }), 8); }
+  try { clipboard.writeText(link); toast(S("inviteCopied")); } catch { toast(S("inviteLink", { link }), 8); }
 }
 
 // ------------------------------------------------------------------ keys and pads (main.js keydown / keyup)
@@ -313,12 +312,14 @@ onFixedUpdate(() => {
 
 // ------------------------------------------------------------------ boot and lifecycle
 let lookKey = "";
+/** The level each tier's budgets were tuned at: the particle budgets scale by the level's particles against it. */
+const TIER_ANCHOR: Record<QualityTier, GraphicsLevel> = { low: "quantum", balanced: "molecular", high: "terrestrial", ultra: "galactic" };
 function applyLook(): void {
-  const f = frame();
-  const k = `${f.quality}:${f.levelIndex}`;
-  if (k === lookKey) return;
-  lookKey = k;
-  render.setLook(Looks.lookFor(f.quality, f.levelIndex));
+  const level = frame().level;
+  if (level === lookKey) return;
+  lookKey = level;
+  const s = levelSettings(level);
+  render.setLook(Looks.lookFor(s.quality, s.particles / levelSettings(TIER_ANCHOR[s.quality]).particles));
 }
 onStart(() => {
   setFixedRate(Rules.TICK_RATE);
@@ -344,13 +345,9 @@ onUpdate((dt) => {
   frameDt = dt;
   applyLook();
   applyTokens(ui.preferences().highContrast);
-  audio.update();
-  const t = Date.now() / 1000;
-  app.toasts = app.toasts.filter((x) => x.until >= t);
 });
 onRender(() => {
   drawScreens();
-  for (const fn of pending.splice(0)) fn();
   if (app.screen === "play" && app.round) {
     // the progress line is a live region: speak it when the lesson step or the player's fate changes
     const r = app.round, me = human();

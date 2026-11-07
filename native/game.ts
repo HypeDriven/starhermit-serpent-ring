@@ -88,7 +88,7 @@ interface ProgressApi {
   emptyDoc(): Doc; normalize(d: unknown): Doc; mergeDocs(a: unknown, b: unknown): Doc; sameDoc(a: unknown, b: unknown): boolean;
   readForeign(text: string): Doc | null; recordResult(doc: Doc, item: Item, res: Result): Rec | null;
 }
-interface LookApi { lookFor(tier: string, levelIndex: number): Look; particleCap(l: Look): number }
+interface LookApi { lookFor(tier: string, scale: number): Look; particleCap(l: Look): number }
 
 export const Rules = rules as unknown as RulesApi;
 export const Content = content as unknown as ContentApi;

@@ -15,10 +15,9 @@ import { fileURLToPath } from 'node:url';
 import { plan } from './plan.mjs';
 import { JOURNEY, LESSONS, CHALLENGES, dailyContent } from '../js/content.js';
 import { meters } from '../js/session.js';
-import { T, setLocale } from '../js/i18n.js';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-setLocale('en-US');
+const T = (s, vars) => s.replace(/\{(\w+)\}/g, (m, k) => (vars[k] != null ? String(vars[k]) : m));
 
 /** The key lines of a plan, timed from the HUD's first frame (tick 1). */
 export function steerLines(p, start = 2) {

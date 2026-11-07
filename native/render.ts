@@ -52,7 +52,7 @@ function hash01(n: number): number {
 }
 
 // ------------------------------------------------------------------ settings
-let G: Look = Looks.lookFor("balanced", 2);
+let G: Look = Looks.lookFor("balanced", 1);
 let reduced = false;
 export function setLook(l: Look): void {
   G = l;

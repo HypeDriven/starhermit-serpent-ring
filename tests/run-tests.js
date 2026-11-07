@@ -208,15 +208,15 @@ await t('records: a round folds in; docs merge to the better of both; foreign te
 
 // ---- The look per graphics level (js/look.js, the old gfx.js presets) ----
 await t('look: the four presets keep the old tiers and budgets, scaled ≤ 2× by the level', () => {
-  const low = look.lookFor('low', 0);
+  const low = look.lookFor('low');
   check(!low.effects && low.dprCap === 1 && look.particleCap(low) === 0, 'low is the plain drawing');
-  const bal = look.lookFor('balanced', 2);
+  const bal = look.lookFor('balanced');
   check(bal.glow === 'on' && bal.shadows === 'off' && bal.grade === 'on' && bal.detail === 'detailed', 'balanced row');
   check(look.particleCap(bal) === Math.round(look.BUDGETS.balanced.particles / 3), 'balanced: Particles low = 1/3');
-  const hi = look.lookFor('high', 4);
-  check(JSON.stringify(hi.budget) === JSON.stringify(look.BUDGETS.high), 'floor level = tuned budget');
-  check(look.lookFor('ultra', 9).budget.spores <= 2 * look.BUDGETS.ultra.spores, 'scale ≤ 2×');
-  check(look.lookFor('ultra', 9).glow === 'high' && look.lookFor('bogus', 0).preset === 'balanced', 'ultra glow; unknown → balanced');
+  const hi = look.lookFor('high', 1);
+  check(JSON.stringify(hi.budget) === JSON.stringify(look.BUDGETS.high), 'anchor level = tuned budget');
+  check(look.lookFor('ultra', 8).budget.spores <= 2 * look.BUDGETS.ultra.spores, 'scale ≤ 2×');
+  check(look.lookFor('ultra', 2).glow === 'high' && look.lookFor('bogus').preset === 'balanced', 'ultra glow; unknown → balanced');
   const keys = ['particles', 'spores', 'fronds', 'specks', 'samples', 'chunks', 'haloRings'];
   for (let i = 1; i < look.TIERS.length; i++) for (const k of keys) check(look.BUDGETS[look.TIERS[i]][k] >= look.BUDGETS[look.TIERS[i - 1]][k], `${k} grows`);
 });

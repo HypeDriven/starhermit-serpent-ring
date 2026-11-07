@@ -1,0 +1,19 @@
+# Tier bench: Fierce practice (most rivals), the player circling on a held key: a busy stretch of bodies, motes,
+# particles. In --smoke, steps follow wall time, so the round's moment varies with the level's speed.
+# viewport 1280x800@1
+until 600 Steer, gather light
+frames 5
+click =Play
+until 300 Choose a mode
+frames 5
+click =Practice
+until 300 Fierce —
+frames 5
+click Fierce —
+until 300 · length
+frames 5
+hold KeyA
+frames 120
+measure start
+frames 600
+measure stop

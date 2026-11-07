@@ -3,8 +3,10 @@
  * presets and their budgets (js/gfx.js TABLE / BUDGETS, each tuned to hold
  * 60 FPS on the weakest GPU its Auto gave it), keyed by the runtime's quality
  * tier (frame().quality), with the particle and spore counts scaled within
- * the tier by the level (frame().levelIndex, at most 2×), as the browser
- * build scaled them by its hardware level. The runtime owns the rest of what
+ * the tier by the level (native/main.ts: levelSettings().particles against the
+ * tier's anchor level; at most 2×), as the browser build scaled them by its
+ * hardware level. The glow, drop shadows and grade are the game's own 2D
+ * painting, not the engine's post effects, so they stay per tier. The runtime owns the rest of what
  * the old Graphics panel did: Auto and the level choice, render scale,
  * adaptive resolution, the frame-rate limit and its readout. The old panel's
  * per-effect overrides are not offered (the runtime's Options pick a level).
@@ -40,15 +42,13 @@ export const BUDGETS = {
 export const PARTICLE_MAX = 1200;
 export const SPORE_MAX = 140;
 const PARTICLE_SHARE = { off: 0, low: 1 / 3, high: 1 };
-/** The runtime's first level index of each tier (levels 0 … 9). */
-const TIER_FLOOR = { low: 0, balanced: 2, high: 4, ultra: 7 };
 
-/** The look for a quality tier at a level index. */
-export function lookFor(tier, levelIndex = 0) {
+/** The look for a quality tier, its particle budgets scaled by `scale` (at most 2×). */
+export function lookFor(tier, scale = 1) {
   const preset = TABLE[tier] ? tier : 'balanced';
   const row = TABLE[preset];
   const budget = { ...BUDGETS[preset] };
-  const k = Math.min(2, Math.pow(1.64, Math.max(0, (Number(levelIndex) || 0) - TIER_FLOOR[preset])));
+  const k = Math.min(2, Math.max(0, Number(scale) || 1));
   budget.particles = Math.min(PARTICLE_MAX, Math.round(budget.particles * k));
   budget.spores = Math.min(SPORE_MAX, Math.round(budget.spores * k));
   const out = { preset, ...row, budget };
