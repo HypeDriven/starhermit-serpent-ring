@@ -1,3 +1,4 @@
+import { withLanguageRender as __l10nRender } from "./l10n/menu.ts";
 // Serpent Ring on the StarHermit engine: the entry module (starhermit.txt
 // engine.entry), played natively by the StarHermit client and in browsers by
 // the engine's web runtime. The rules (js/rules.js), content (js/content.js)
@@ -346,7 +347,7 @@ onUpdate((dt) => {
   applyLook();
   applyTokens(ui.preferences().highContrast);
 });
-onRender(() => {
+onRender(__l10nRender(() => {
   drawScreens();
   if (app.screen === "play" && app.round) {
     // the progress line is a live region: speak it when the lesson step or the player's fate changes
@@ -356,5 +357,9 @@ onRender(() => {
     lastSpoken = key;
   }
   flushAnnouncements();
-});
+}));
 export { now };
+
+// localization-runtime:menu
+import { installLanguageMenu as __installLanguageMenu } from "./l10n/menu.ts";
+__installLanguageMenu(true);

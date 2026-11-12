@@ -1,3 +1,5 @@
+import { localizedStyle as __l10nStyle } from "./l10n/font.ts";
+import { openLocalizedOptions as openMenu } from "./l10n/menu.ts";
 // The browser build's DOM shell (index.html + css/style.css + main.js's
 // screen population) as starhermit:ui, built every frame: the title bar
 // (name, player, sync chip, UTC clock, Help), and one screen at a time in a
@@ -9,7 +11,7 @@
 // landscape (≤ 520 px tall: the ring beside its HUD, the title menu in two
 // columns, no vignette). The Graphics screen and the pause panel's volume
 // sliders are the runtime's Options (the Options buttons open them).
-import { frame, openMenu } from "starhermit:engine";
+import { frame } from "starhermit:engine";
 import { bindings, primaryPointer } from "starhermit:input";
 import * as draw from "starhermit:draw";
 import * as ui from "starhermit:ui";
@@ -37,7 +39,7 @@ function textWidth(text: string, style: string, kind?: "button" | "heading"): nu
 /** Text up to `width` wide: one label when it fits, else a paragraph. */
 function para(text: string, width: number, cls = "text", id?: string): void {
   if (!text) return;
-  let u = ui.style(cls);
+  let u = ui.style(__l10nStyle(cls));
   if (id) u = u.id(id);
   if (textWidth(text, cls) <= width) u.label(text);
   else u.paragraph(text, Math.max(20, width));
@@ -45,7 +47,7 @@ function para(text: string, width: number, cls = "text", id?: string): void {
 /** Centred text up to `width` wide (a centred class): a paragraph that wide, or a label in a centred row. */
 function centred(text: string, width: number, cls: string, id?: string): void {
   if (!text) return;
-  const u = (): typeof ui => (id ? ui.style(cls).id(id) : ui.style(cls));
+  const u = (): typeof ui => (id ? ui.style(__l10nStyle(cls)).id(id) : ui.style(__l10nStyle(cls)));
   // style() applies to the next widget or container: take it inside the row
   if (textWidth(text, cls) <= width) ui.row(`${id ?? cls}-row`, () => { u().label(text); }, { width, justify: "center" });
   else u().paragraph(text, Math.max(20, width));
@@ -59,11 +61,11 @@ function button(b: Btn): void {
   else if (b.width != null && textWidth(b.text, style, "button") > b.width) {
     // a label wider than its button wraps (labels don't)
     const inner = b.width - (PAD[style] ?? 32);
-    opts.content = () => { ui.style(style === "btn-primary" ? "wrap-primary" : "wrap").paragraph(b.text, Math.max(20, inner)); };
+    opts.content = () => { ui.style(__l10nStyle(style === "btn-primary" ? "wrap-primary" : "wrap")).paragraph(b.text, Math.max(20, inner)); };
   } else if (b.name && b.name !== b.text) opts.content = () => { ui.label(b.text); };
   const s: ui.Style = {};
   if (b.width != null) s.width = b.width;
-  if (ui.style(style, s).id(b.id).button(b.name ?? b.text, opts) && fresh()) later(b.act);
+  if (ui.style(__l10nStyle(style), __l10nStyle(s)).id(b.id).button(b.name ?? b.text, opts) && fresh()) later(b.act);
 }
 
 // ------------------------------------------------------------------ the frame
@@ -90,13 +92,13 @@ export function drawScreens(): void {
 // ------------------------------------------------------------------ the title bar (.sr-topbar)
 function topbar(L: Layout): ui.Rect {
   return ui.row("topbar", () => {
-    ui.style("title").label("Serpent Ring");
+    ui.style(__l10nStyle("title")).label("Serpent Ring");
     ui.spacer();
-    if (platform.signedIn() && platform.displayName()) ui.style("player").id("hud-player").label(platform.displayName());
+    if (platform.signedIn() && platform.displayName()) ui.style(__l10nStyle("player")).id("hud-player").label(platform.displayName());
     const sync = platform.syncState();
-    ui.style(sync === "synced" ? "sync-synced" : sync === "saving" ? "sync-saving" : "sync").id("sync")
+    ui.style(__l10nStyle(sync === "synced" ? "sync-synced" : sync === "saving" ? "sync-saving" : "sync")).id("sync")
       .label(sync === "synced" ? T("synced") : sync === "saving" ? T("saving…") : T("offline"));
-    if (!L.narrow || L.lw > 360) ui.style("clock").id("clock").label(new Date(platform.nowMs()).toISOString().slice(11, 19) + " UTC");
+    if (!L.narrow || L.lw > 360) ui.style(__l10nStyle("clock")).id("clock").label(new Date(platform.nowMs()).toISOString().slice(11, 19) + " UTC");
     button({ id: "btn-help", text: "?", name: T("Help and rules"), style: "btn-icon", act: showHelp });
   }, { style: "topbar", width: L.lw, spacing: L.narrow ? 10 : 16, align: "center", padding: { top: L.land ? 3 : 6, bottom: L.land ? 3 : 6, start: 16, end: 16 } });
 }
@@ -193,8 +195,8 @@ function modes(w: number): void {
           id, text: name, style: "card", width: cw, act,
           content: () => {
             ui.column(`${id}-c`, () => {
-              ui.style("card-title").label(name);
-              ui.style("card-text").paragraph(T(brief), cw - 32);
+              ui.style(__l10nStyle("card-title")).label(name);
+              ui.style(__l10nStyle("card-text")).paragraph(T(brief), cw - 32);
             }, { spacing: 4, width: cw - 32 });
           },
         });
@@ -296,9 +298,9 @@ function results(L: Layout, w: number): void {
         const label = BREAKDOWN[row.key] ? T(BREAKDOWN[row.key]!) : row.label;
         const detail = row.detail === "complete" ? T("complete") : row.detail;
         ui.row(`score-${row.key}`, () => {
-          ui.style("score-k").label(detail ? `${label} (${detail})` : label);
+          ui.style(__l10nStyle("score-k")).label(detail ? `${label} (${detail})` : label);
           ui.spacer();
-          ui.style("score-v").id(`score-${row.key}-v`).label(String(row.amount));
+          ui.style(__l10nStyle("score-v")).id(`score-${row.key}-v`).label(String(row.amount));
         }, { width: tableW, spacing: 16 });
       }
     }, { width: tableW, spacing: 2 });
