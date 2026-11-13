@@ -362,4 +362,4 @@ export { now };
 
 // localization-runtime:menu
 import { installLanguageMenu as __installLanguageMenu } from "./l10n/menu.ts";
-__installLanguageMenu(true);
+__installLanguageMenu(false);
