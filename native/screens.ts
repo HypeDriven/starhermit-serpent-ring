@@ -69,7 +69,7 @@ function button(b: Btn): void {
 }
 
 // ------------------------------------------------------------------ the frame
-export function drawScreens(): void {
+function drawScreensImmediate(): void {
   const L = layoutNow();
   const f = frame();
   draw.rect(0, 0, f.width, f.height, token("bg")); // body background (--sr-bg)
@@ -371,4 +371,11 @@ function play(L: Layout, bh: number, inner: number, pad: number): void {
       ui.row("pause-row", pauseBtn, { width: inner, justify: "center" });
     }, { width: inner + 2 * pad, spacing: 4, align: "center", padding: pad });
   }, { width: L.lw, justify: "center" });
+}
+
+export function drawScreens(): void {
+  if (app.screen !== "help") { drawScreensImmediate(); return; }
+  const actions = ["steer_left","steer_right","boost","undo","pause"];
+  const version = JSON.stringify([(app as any).settings ?? (app as any).options ?? {}, (platform as any).options ?? {}, actions.map((action) => bindings(action))]);
+  ui.retain!("help-screen", version, drawScreensImmediate);
 }
