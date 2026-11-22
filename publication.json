@@ -12,7 +12,7 @@
     "metadataSource": "starhermit.txt",
     "createdAt": "2026-09-01T07:01:06.972696+00:00",
     "coverArtSource": "manifest",
-    "coverArtUpdatedAt": "2026-11-18T17:52:52.306143+00:00",
+    "coverArtUpdatedAt": "2026-11-22T14:25:51.738787+00:00",
     "submittedByUserId": "2712e04e-461b-4d23-81ae-e40b429128a8",
     "submittedByUsername": "starhermit",
     "hosting": {
@@ -22,9 +22,9 @@
       "pinnedCommitSha": null,
       "deployedCommitSha": null,
       "deployError": null,
-      "deployedAt": "2026-11-18T17:52:52.29621+00:00",
+      "deployedAt": "2026-11-22T14:25:51.728555+00:00",
       "externalLaunchUrl": null,
-      "engineVersion": "1.44.1",
+      "engineVersion": "1.47.0",
       "deployWarning": null
     },
     "description": "Guide a luminous serpent, collect motes to grow, and use bursts of speed while avoiding other serpents' bodies.",
@@ -36,19 +36,19 @@
     "links": [],
     "isDisabled": false
   },
-  "publishedAt": "2026-11-18T17:52:52.275Z",
-  "sourceCommit": "56a30b558219e4e1e1e7178230e3d1b74c619b71",
-  "bytesReceived": 1719822,
-  "archiveSha256": "42953de24e449338afd14cbee778657224bddc40f7ecac005bcd3fcc5a949bad",
+  "publishedAt": "2026-11-22T14:25:52.180Z",
+  "sourceCommit": "934ee148799af6f4b406792064a0b35565843afa",
+  "bytesReceived": 1720746,
+  "archiveSha256": "fd3da841374c7437d65d4cf06cdf5060a26b3d7cb783c2efdd3dec52aa21eb17",
   "indexSha256": "01a6d1e46f7be4c68abc53d62ff3f6baba4581ecef3c1a132e5111d938dbcccf",
   "result": {
     "clientPublished": true,
     "serverImageLoaded": false,
     "imageDigest": null,
-    "bytesReceived": 1719822,
+    "bytesReceived": 1720746,
     "mode": "replace",
     "filesRemoved": 0,
-    "engineVersion": "1.44.1",
+    "engineVersion": "1.47.0",
     "deployWarning": null
   },
   "liveVerification": {
