@@ -2,7 +2,7 @@
 
 **Status:** running specification of the shipped game (present tense).
 **Genre:** realtime growth arena, solo against bot rivals
-**Platform:** a StarHermit engine script game (engine 1.44.1, `engine.minor=44`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
+**Platform:** a StarHermit engine script game (engine 1.47.0, `engine.minor=47`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
 **Rendering:** a 2D ring drawn with `starhermit:draw` over a baked `starhermit:canvas` backdrop; menus and HUD on `starhermit:ui`
 
 ## 1. Product vision
@@ -168,8 +168,10 @@ The string tables include complete regional variants for `fr-BE`, `de-BE`, `en-S
 
 <!-- regional-localization:end -->
 
-## Engine 1.44.1
+## Engine 1.47.0
 
-Browser play uses the WebGPU-only StarHermit 1.44.1 web runtime. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
+Browser play uses the WebGPU-only StarHermit 1.47.0 web runtime. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
 
 The help screen replays through retained native UI while its contents, options, layout and key bindings are unchanged.
+
+Browser rendering uses the engine's asynchronous pipeline creation so newly encountered materials do not stall the page. Native play retains the engine's synchronous pipeline behavior.
