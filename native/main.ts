@@ -1,3 +1,4 @@
+import { showCursor } from "./cursor.ts";
 import { withLanguageRender as __l10nRender } from "./l10n/menu.ts";
 // Serpent Ring on the StarHermit engine: the entry module (starhermit.txt
 // engine.entry), played natively by the StarHermit client and in browsers by
@@ -323,6 +324,7 @@ function applyLook(): void {
   render.setLook(Looks.lookFor(s.quality, s.particles / levelSettings(TIER_ANCHOR[s.quality]).particles));
 }
 onStart(() => {
+  showCursor();
   setFixedRate(Rules.TICK_RATE);
   initStyles();
   platform.initPlatform();
