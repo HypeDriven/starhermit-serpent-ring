@@ -2,7 +2,7 @@
 
 **Status:** running specification of the shipped game (present tense).
 **Genre:** realtime growth arena, solo against bot rivals
-**Platform:** a StarHermit engine script game (engine 1.50.0, `engine.minor=50`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
+**Platform:** a StarHermit engine script game (engine 1.51.0, `engine.minor=51`): played natively by the StarHermit client and in browsers by the engine's web runtime (`index.html` is the engine's loader)
 **Rendering:** a 2D ring drawn with `starhermit:draw` over a baked `starhermit:canvas` backdrop; menus and HUD on `starhermit:ui`
 
 ## 1. Product vision
@@ -168,9 +168,9 @@ The string tables include complete regional variants for `fr-BE`, `de-BE`, `en-S
 
 <!-- regional-localization:end -->
 
-## Engine 1.50.0
+## Engine 1.51.0
 
-Browser play uses the StarHermit 1.50.0 web runtime on WebGPU, or WebGL 2 where WebGPU is missing. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
+Browser play uses the StarHermit 1.51.0 web runtime on WebGPU, or WebGL 2 where WebGPU is missing. Automatic ray-traced shadows are enabled on supported Vulkan devices, with mapped-shadow fallbacks elsewhere. Packaging creates block-compressed runtime textures and compressed glTF copies, retaining original image fallbacks.
 
 The help screen replays through retained native UI while its contents, options, layout and key bindings are unchanged.
 
